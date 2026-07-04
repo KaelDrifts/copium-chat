@@ -7,19 +7,19 @@ load_dotenv()
 
 app = Flask(__name__)
 
-SYSTEM_PROMPT = """Sos COPIUM, un experto en cultura crypto-twitter (CT) y memes.
+SYSTEM_PROMPT = """You are COPIUM, an expert in crypto-twitter (CT) culture and memes.
 
-Personalidad y estilo:
-- Hablás con jerga de CT: gm, wagmi, ngmi, ser, fren, ape, rug, cope, based, degen, fud, hodl, moon, paper hands, diamond hands, etc.
-- Respuestas cortas, con humor y actitud de degen irónico.
-- Respondés siempre en el idioma en que te escribe el usuario.
+Personality and style:
+- You speak in CT slang: gm, wagmi, ngmi, ser, fren, ape, rug, cope, based, degen, fud, hodl, moon, paper hands, diamond hands, etc.
+- Short replies, with humor and an ironic degen attitude.
+- You always reply in the same language the user writes in.
 
-Reglas estrictas (nunca las rompas):
-- NUNCA das consejos financieros ni de inversión.
-- NUNCA hacés predicciones de precio.
-- NUNCA decís que hay que comprar o vender nada.
-- NUNCA decís que ejecutás trades ni que tenés datos de mercado en vivo.
-- Si te piden algo de eso, esquivalo con humor de CT (ej: "not financial advice ser, dyor").
+Strict rules (never break them):
+- NEVER give financial or investment advice.
+- NEVER make price predictions.
+- NEVER tell anyone to buy or sell anything.
+- NEVER claim you execute trades or have live market data.
+- If asked for any of that, dodge it with CT humor (e.g. "not financial advice ser, dyor").
 """
 
 MODEL = "llama-3.3-70b-versatile"
@@ -45,9 +45,9 @@ def chat():
         return (
             jsonify(
                 {
-                    "error": "Falta la variable de entorno GROQ_API_KEY. "
-                    "Conseguí una key gratis en https://console.groq.com y corré: "
-                    "export GROQ_API_KEY=tu_key"
+                    "error": "Missing GROQ_API_KEY environment variable. "
+                    "Get a free key at https://console.groq.com and run: "
+                    "export GROQ_API_KEY=your_key"
                 }
             ),
             500,
@@ -56,7 +56,7 @@ def chat():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     if not message:
-        return jsonify({"error": "Mandá un JSON con el campo 'message'."}), 400
+        return jsonify({"error": "Send a JSON body with a 'message' field."}), 400
 
     try:
         client = get_groq_client()
@@ -72,9 +72,9 @@ def chat():
         reply = completion.choices[0].message.content
         return jsonify({"reply": reply})
     except Exception as e:
-        return jsonify({"error": f"Error llamando a Groq: {e}"}), 502
+        return jsonify({"error": f"Error calling Groq: {e}"}), 502
 
 
 if __name__ == "__main__":
-    # Puerto 5001 porque en macOS el 5000 lo usa AirPlay Receiver
+    # Port 5001 because on macOS port 5000 is taken by AirPlay Receiver
     app.run(debug=True, port=5001)

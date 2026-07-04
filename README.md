@@ -1,23 +1,30 @@
 # COPIUM 🐸 — crypto twitter chat terminal
 
-Chat assistant con estética de terminal que habla como un degen de crypto twitter. Backend en Flask + Groq (gratis), frontend en HTML/JS vanilla.
+Terminal-styled chat assistant that talks like a crypto twitter degen. Flask + Groq backend (free), vanilla HTML/JS frontend.
 
-> COPIUM no da consejos financieros, no predice precios y no ejecuta trades. Solo vibes.
+> COPIUM does not give financial advice, does not predict prices and does not execute trades. Vibes only.
 
-## 1. Conseguir una API key gratis
+## 1. Get a free API key
 
-1. Entrá a [console.groq.com](https://console.groq.com) y creá una cuenta (gratis, sin tarjeta).
-2. Andá a **API Keys** → **Create API Key**.
-3. Copiá la key (empieza con `gsk_...`).
+1. Go to [console.groq.com](https://console.groq.com) and create an account (free, no credit card).
+2. Go to **API Keys** → **Create API Key**.
+3. Copy the key (starts with `gsk_...`).
 
-## 2. Correr el proyecto
+## 2. Run the project
 
 ```bash
 pip install -r requirements.txt
-export GROQ_API_KEY=gsk_tu_key_aca
 python app.py
 ```
 
-Abrí [http://localhost:5001](http://localhost:5001) y listo. gm.
+Put your key in a `.env` file in the project root:
 
-> Nota: se usa el puerto 5001 porque en macOS el 5000 suele estar ocupado por AirPlay Receiver.
+```
+GROQ_API_KEY=gsk_your_key_here
+```
+
+(or `export GROQ_API_KEY=gsk_your_key_here` before running).
+
+Open [http://localhost:5001](http://localhost:5001) and that's it. gm.
+
+> Note: port 5001 is used because on macOS port 5000 is usually taken by AirPlay Receiver.
