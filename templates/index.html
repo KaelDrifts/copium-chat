@@ -3,109 +3,341 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>COPIUM // terminal</title>
+  <title>COPIUM — tu dealer de esperanza en el bear market</title>
+  <meta name="description" content="COPIUM: la IA degen de crypto twitter. Memes, jerga CT y cero consejos financieros." />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    body {
-      background: #000;
-      color: #33ff33;
-      font-family: "Courier New", Courier, monospace;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 16px;
+    :root {
+      --green: #33ff33;
+      --green-dim: #1a9c1a;
+      --amber: #ffbf00;
+      --amber-dim: #ff9900;
+      --red: #ff4444;
+      --bg: #000;
+      --panel: #050a05;
     }
 
-    .terminal {
-      width: 100%;
-      max-width: 800px;
-      height: 100%;
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: "Courier New", Courier, monospace;
+      overflow-x: hidden;
+    }
+
+    /* CRT scanlines overlay */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15) 0px,
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      z-index: 999;
+    }
+
+    a { color: var(--amber); }
+
+    /* ---------- NAV ---------- */
+    nav {
+      position: sticky;
+      top: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: rgba(0, 0, 0, 0.92);
+      border-bottom: 1px solid var(--green-dim);
+      z-index: 100;
+    }
+
+    nav .logo {
+      font-weight: bold;
+      letter-spacing: 3px;
+      text-shadow: 0 0 8px var(--green);
+    }
+
+    nav .links a {
+      color: var(--green);
+      text-decoration: none;
+      margin-left: 20px;
+      font-size: 14px;
+    }
+
+    nav .links a:hover { color: var(--amber); text-shadow: 0 0 6px var(--amber); }
+
+    /* ---------- HERO ---------- */
+    .hero {
+      min-height: 82vh;
       display: flex;
       flex-direction: column;
-      border: 1px solid #33ff33;
-      box-shadow: 0 0 12px rgba(51, 255, 51, 0.3);
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .hero pre.ascii {
+      color: var(--green);
+      text-shadow: 0 0 10px rgba(51, 255, 51, 0.6);
+      font-size: clamp(6px, 1.6vw, 14px);
+      line-height: 1.15;
+      margin-bottom: 24px;
+      animation: flicker 4s infinite;
+    }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      92% { opacity: 1; }
+      93% { opacity: 0.6; }
+      94% { opacity: 1; }
+      97% { opacity: 0.8; }
+      98% { opacity: 1; }
+    }
+
+    .hero h1 { display: none; } /* accesibilidad: título real en ascii */
+
+    .hero .tagline {
+      font-size: clamp(16px, 2.4vw, 22px);
+      color: var(--amber);
+      margin-bottom: 12px;
+    }
+
+    .hero .sub {
+      color: var(--green-dim);
+      max-width: 560px;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .btn {
+      display: inline-block;
+      border: 1px solid var(--green);
+      color: var(--green);
+      background: transparent;
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px 28px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 0 12px rgba(51, 255, 51, 0.25);
+    }
+
+    .btn:hover { background: var(--green); color: #000; text-shadow: none; }
+
+    .blink { animation: blink 1.1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ---------- SECCIONES ---------- */
+    section { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
+
+    .section-title {
+      color: var(--amber);
+      font-size: 22px;
+      margin-bottom: 24px;
+      letter-spacing: 2px;
+    }
+
+    .section-title::before { content: "> "; color: var(--green); }
+
+    .about p { line-height: 1.8; font-size: 15px; margin-bottom: 14px; color: #b8ffb8; }
+    .about .hl { color: var(--amber); }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--green-dim);
+      background: var(--panel);
+      padding: 20px;
+    }
+
+    .card h3 { color: var(--green); font-size: 15px; margin-bottom: 10px; }
+    .card h3::before { content: "[+] "; color: var(--amber); }
+    .card p { color: #9adf9a; font-size: 13px; line-height: 1.6; }
+
+    /* ---------- TERMINAL DE CHAT ---------- */
+    .terminal {
+      display: flex;
+      flex-direction: column;
+      height: 520px;
+      border: 1px solid var(--green);
+      box-shadow: 0 0 18px rgba(51, 255, 51, 0.3);
+      background: var(--bg);
     }
 
     .titlebar {
-      border-bottom: 1px solid #33ff33;
+      border-bottom: 1px solid var(--green);
       padding: 8px 12px;
-      font-size: 14px;
+      font-size: 13px;
       letter-spacing: 2px;
-      text-shadow: 0 0 6px #33ff33;
+      text-shadow: 0 0 6px var(--green);
+      display: flex;
+      justify-content: space-between;
     }
 
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
+    .titlebar .dots { color: var(--green-dim); }
+
+    #chat { flex: 1; overflow-y: auto; padding: 12px; font-size: 14px; line-height: 1.5; }
 
     .msg { margin-bottom: 10px; white-space: pre-wrap; word-wrap: break-word; }
     .msg .tag { font-weight: bold; }
-    .msg.user { color: #33ff33; }
+    .msg.user { color: var(--green); }
     .msg.user .tag { color: #00cc00; }
-    .msg.bot { color: #ffbf00; }
-    .msg.bot .tag { color: #ff9900; }
-    .msg.error { color: #ff4444; }
+    .msg.bot { color: var(--amber); }
+    .msg.bot .tag { color: var(--amber-dim); }
+    .msg.error { color: var(--red); }
     .msg.error .tag { color: #ff0000; }
 
-    .inputbar {
-      display: flex;
-      border-top: 1px solid #33ff33;
-    }
-
-    .inputbar .prompt-char {
-      padding: 10px 0 10px 12px;
-      color: #33ff33;
-    }
+    .inputbar { display: flex; border-top: 1px solid var(--green); }
+    .inputbar .prompt-char { padding: 10px 0 10px 12px; }
 
     #input {
       flex: 1;
       background: transparent;
       border: none;
       outline: none;
-      color: #33ff33;
+      color: var(--green);
       font-family: inherit;
       font-size: 14px;
       padding: 10px 8px;
-      caret-color: #33ff33;
+      caret-color: var(--green);
     }
 
     #send {
       background: transparent;
       border: none;
-      border-left: 1px solid #33ff33;
-      color: #33ff33;
+      border-left: 1px solid var(--green);
+      color: var(--green);
       font-family: inherit;
       font-size: 14px;
       padding: 10px 16px;
       cursor: pointer;
     }
 
-    #send:hover { background: #33ff33; color: #000; }
+    #send:hover { background: var(--green); color: #000; }
     #send:disabled { opacity: 0.4; cursor: wait; }
 
     #chat::-webkit-scrollbar { width: 8px; }
-    #chat::-webkit-scrollbar-thumb { background: #33ff33; }
-    #chat::-webkit-scrollbar-track { background: #111; }
+    #chat::-webkit-scrollbar-thumb { background: var(--green-dim); }
+    #chat::-webkit-scrollbar-track { background: #0a0a0a; }
+
+    /* ---------- FOOTER ---------- */
+    footer {
+      border-top: 1px solid var(--green-dim);
+      margin-top: 40px;
+      padding: 32px 20px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--green-dim);
+      line-height: 1.8;
+    }
+
+    footer .nfa { color: var(--red); }
   </style>
 </head>
 <body>
-  <div class="terminal">
-    <div class="titlebar">COPIUM v1.0 — crypto twitter terminal — type 'gm' to start</div>
-    <div id="chat">
-      <div class="msg bot"><span class="tag">[COPIUM]</span> gm ser. wagmi. preguntame lo que quieras, fren (not financial advice, obvio)</div>
+  <nav>
+    <div class="logo">COPIUM_</div>
+    <div class="links">
+      <a href="#about">about</a>
+      <a href="#features">specs</a>
+      <a href="#chat-section">terminal</a>
     </div>
-    <div class="inputbar">
-      <span class="prompt-char">&gt;</span>
-      <input id="input" type="text" autocomplete="off" autofocus placeholder="escribí acá, anon..." />
-      <button id="send">send</button>
+  </nav>
+
+  <header class="hero">
+    <pre class="ascii" aria-hidden="true">
+  ██████╗ ██████╗ ██████╗ ██╗██╗   ██╗███╗   ███╗
+ ██╔════╝██╔═══██╗██╔══██╗██║██║   ██║████╗ ████║
+ ██║     ██║   ██║██████╔╝██║██║   ██║██╔████╔██║
+ ██║     ██║   ██║██╔═══╝ ██║██║   ██║██║╚██╔╝██║
+ ╚██████╗╚██████╔╝██║     ██║╚██████╔╝██║ ╚═╝ ██║
+  ╚═════╝ ╚═════╝ ╚═╝     ╚═╝ ╚═════╝ ╚═╝     ╚═╝</pre>
+    <h1>COPIUM</h1>
+    <p class="tagline">tu dealer de esperanza en el bear market</p>
+    <p class="sub">
+      La IA más degen de crypto twitter. Habla tu idioma (y el de CT),
+      entiende de memes, de copium y de diamond hands.
+      No te va a decir qué comprar — te va a acompañar en el cope.
+    </p>
+    <a class="btn" href="#chat-section">&gt; iniciar terminal<span class="blink">_</span></a>
+  </header>
+
+  <section id="about" class="about">
+    <h2 class="section-title">cat about.txt</h2>
+    <p>
+      <span class="hl">COPIUM</span> es un chatbot con una sola misión: mantener las vibes altas
+      cuando el mercado está en rojo. Nació en las trincheras de crypto twitter,
+      criado a base de memes, threads apocalípticos y "wen moon" sin respuesta.
+    </p>
+    <p>
+      Habla con jerga de CT nativa — <span class="hl">gm, wagmi, ngmi, ser, fren, based, rug, ape</span> —
+      y responde en el idioma que le escribas. Es rápido, es gratis y es tuyo.
+    </p>
+    <p>
+      Lo que <span class="hl">no</span> hace: consejos financieros, predicciones de precio,
+      señales de trading. Para eso ya está el resto de CT (y mirá cómo les va).
+    </p>
+  </section>
+
+  <section id="features">
+    <h2 class="section-title">ls -la specs/</h2>
+    <div class="features">
+      <div class="card">
+        <h3>100% degen certified</h3>
+        <p>Entrenado en la cultura de crypto twitter. Domina el copium, el hopium y todas las sustancias del mercado.</p>
+      </div>
+      <div class="card">
+        <h3>0% financial advice</h3>
+        <p>Nunca te va a decir qué comprar ni cuándo vender. NFA por diseño, dyor siempre, ser.</p>
+      </div>
+      <div class="card">
+        <h3>políglota nato</h3>
+        <p>Escribile en español, inglés o el idioma que quieras. Te responde en el tuyo (con acento CT).</p>
+      </div>
+      <div class="card">
+        <h3>open source & gratis</h3>
+        <p>Flask + Groq + vanilla JS. Corre gratis, local, sin trackers ni wallet connect sospechoso.</p>
+      </div>
     </div>
-  </div>
+  </section>
+
+  <section id="chat-section">
+    <h2 class="section-title">./copium --interactive</h2>
+    <div class="terminal">
+      <div class="titlebar">
+        <span>COPIUM v1.0 — crypto twitter terminal</span>
+        <span class="dots">[●●●]</span>
+      </div>
+      <div id="chat">
+        <div class="msg bot"><span class="tag">[COPIUM]</span> gm ser. wagmi. preguntame lo que quieras, fren (not financial advice, obvio)</div>
+      </div>
+      <div class="inputbar">
+        <span class="prompt-char">&gt;</span>
+        <input id="input" type="text" autocomplete="off" placeholder="escribí acá, anon..." />
+        <button id="send">send</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p><span class="nfa">⚠ NOT FINANCIAL ADVICE.</span> COPIUM es entretenimiento y memes, nada más.</p>
+    <p>No ejecuta trades, no tiene datos de mercado, no predice precios. dyor, ser.</p>
+    <p>COPIUM © 2026 — hecho con flask, groq y copium puro</p>
+  </footer>
 
   <script>
     const chat = document.getElementById("chat");
