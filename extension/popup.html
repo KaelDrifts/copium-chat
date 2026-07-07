@@ -147,6 +147,7 @@
     }
 
     .rule-add input { width: 80px; }
+    .rule-add.rule-code input { flex: 1; width: auto; }
 
     .rule-add button {
       background: transparent;
@@ -205,6 +206,16 @@
       </select>
       <input id="rule-value" type="number" step="any" placeholder="value" />
       <button id="rule-add-btn">add</button>
+    </div>
+    <div class="rule-add rule-code">
+      <input id="rule-expr" type="text" maxlength="200" placeholder="or code your own: liquidity_usd / market_cap_usd > 0.05" />
+      <button id="rule-expr-btn">add</button>
+    </div>
+    <div class="rules-hint" style="margin-top:6px;">
+      coded rules: numbers, + - * / %, comparisons, and/or/not, parens. variables: copium_score,
+      market_cap_usd, liquidity_usd, liquidity_to_mcap_pct, volume_24h_usd, price_usd,
+      price_change_24h_pct, pair_age_days, top10_holders_pct, total_holders, rugcheck_score,
+      bonding_curve_pct, mint_renounced, freeze_renounced.
     </div>
   </div>
   <div id="chat">

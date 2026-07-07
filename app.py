@@ -1,3 +1,5 @@
+import ast
+import operator
 import os
 import re
 import secrets
@@ -480,6 +482,72 @@ def compute_copium_score(report):
 # ---------------------------------------------------------------------------
 
 ALLOWED_RULE_OPS = {">=", "<=", ">", "<", "=="}
+MAX_RULE_EXPR_LEN = 200
+
+
+class _MissingMetric(Exception):
+    pass
+
+
+_EXPR_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Mod: operator.mod,
+}
+_EXPR_CMPOPS = {
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Eq: operator.eq,
+    ast.NotEq: operator.ne,
+}
+
+
+def safe_eval_rule(expr, metrics):
+    """Evaluate a user-coded rule like 'liquidity_usd / market_cap_usd > 0.05 and total_holders > 300'.
+
+    Whitelisted AST only: numbers, metric names, + - * / %, comparisons, and/or/not, parentheses.
+    Raises _MissingMetric when a referenced metric has no data, ValueError for anything not allowed.
+    """
+    tree = ast.parse(expr, mode="eval")
+
+    def ev(node):
+        if isinstance(node, ast.BoolOp):
+            values = [ev(v) for v in node.values]
+            return all(values) if isinstance(node.op, ast.And) else any(values)
+        if isinstance(node, ast.UnaryOp):
+            if isinstance(node.op, ast.Not):
+                return not ev(node.operand)
+            if isinstance(node.op, ast.USub):
+                return -ev(node.operand)
+            raise ValueError("operator not allowed")
+        if isinstance(node, ast.BinOp) and type(node.op) in _EXPR_BINOPS:
+            return _EXPR_BINOPS[type(node.op)](ev(node.left), ev(node.right))
+        if isinstance(node, ast.Compare):
+            left = ev(node.left)
+            result = True
+            for op, comparator in zip(node.ops, node.comparators):
+                if type(op) not in _EXPR_CMPOPS:
+                    raise ValueError("comparison not allowed")
+                right = ev(comparator)
+                result = result and _EXPR_CMPOPS[type(op)](left, right)
+                left = right
+            return result
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float, bool)):
+            return node.value
+        if isinstance(node, ast.Name):
+            if node.id not in metrics:
+                raise ValueError(f"unknown variable '{node.id}'")
+            value = metrics[node.id]
+            if value is None:
+                raise _MissingMetric(node.id)
+            return value
+        raise ValueError(f"'{type(node).__name__}' not allowed in rules")
+
+    return bool(ev(tree.body))
 
 
 def collect_metrics(report):
@@ -511,7 +579,9 @@ def collect_metrics(report):
 def evaluate_user_rules(report, rules):
     """Check the user's own buy rules against the scanned metrics.
 
-    rules: list of {"metric": <key of collect_metrics>, "op": ">=|<=|>|<|==", "value": number}
+    rules: list of either
+      {"metric": <key of collect_metrics>, "op": ">=|<=|>|<|==", "value": number}   (simple)
+      {"expr": "liquidity_usd / market_cap_usd > 0.05 and total_holders > 300"}     (coded)
     Returns None when there are no usable rules.
     """
     if not isinstance(rules, list):
@@ -521,6 +591,20 @@ def evaluate_user_rules(report, rules):
     for rule in rules[:20]:
         if not isinstance(rule, dict):
             continue
+
+        expr = str(rule.get("expr") or "").strip()
+        if expr:
+            label = expr[:MAX_RULE_EXPR_LEN]
+            actual = None
+            try:
+                status = "pass" if safe_eval_rule(label, metrics) else "fail"
+            except _MissingMetric:
+                status = "unknown"
+            except Exception:
+                status = "invalid"
+            results.append({"label": label, "expr": label, "actual": actual, "status": status})
+            continue
+
         metric = rule.get("metric")
         op = rule.get("op")
         value = _to_float(rule.get("value"))
@@ -538,7 +622,16 @@ def evaluate_user_rules(report, rules):
                 "==": actual == value,
             }[op]
             status = "pass" if passed else "fail"
-        results.append({"metric": metric, "op": op, "value": value, "actual": actual, "status": status})
+        results.append(
+            {
+                "label": f"{metric} {op} {_fmt(value)}",
+                "metric": metric,
+                "op": op,
+                "value": value,
+                "actual": actual,
+                "status": status,
+            }
+        )
     if not results:
         return None
     n_pass = sum(1 for r in results if r["status"] == "pass")
@@ -557,8 +650,8 @@ def format_rules_for_llm(rules_eval):
         return ""
     lines = ["", "USER'S OWN BUY RULES (already evaluated, do not re-judge them):"]
     for r in rules_eval["results"]:
-        actual = "no data" if r["actual"] is None else _fmt(r["actual"])
-        lines.append(f"- {r['metric']} {r['op']} {_fmt(r['value'])}: actual {actual} -> {r['status'].upper()}")
+        detail = "" if r["actual"] is None else f" (actual {_fmt(r['actual'])})"
+        lines.append(f"- {r['label']}: {r['status'].upper()}{detail}")
     lines.append(
         f"VERDICT PER USER RULES: {rules_eval['verdict']} "
         f"({rules_eval['n_pass']}/{rules_eval['n_rules']} rules passed)"

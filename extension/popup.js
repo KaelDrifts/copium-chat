@@ -119,7 +119,8 @@ function renderRules() {
     del.title = "delete rule";
     del.addEventListener("click", () => { rules.splice(i, 1); saveRules(); });
     row.appendChild(del);
-    row.appendChild(document.createTextNode(`${metricLabel(rule.metric)} ${rule.op} ${rule.value}`));
+    const label = rule.expr ? `{ ${rule.expr} }` : `${metricLabel(rule.metric)} ${rule.op} ${rule.value}`;
+    row.appendChild(document.createTextNode(label));
     rulesList.appendChild(row);
   });
 }
@@ -137,6 +138,18 @@ document.getElementById("rule-add-btn").addEventListener("click", () => {
   rules.push({ metric: ruleMetric.value, op: ruleOp.value, value });
   ruleValue.value = "";
   saveRules();
+});
+
+const ruleExpr = document.getElementById("rule-expr");
+document.getElementById("rule-expr-btn").addEventListener("click", () => {
+  const expr = ruleExpr.value.trim();
+  if (!expr) { ruleExpr.focus(); return; }
+  rules.push({ expr });
+  ruleExpr.value = "";
+  saveRules();
+});
+ruleExpr.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("rule-expr-btn").click();
 });
 
 // Load saved rules, then handle a pending context-menu scan

@@ -310,6 +310,7 @@
     }
 
     .rule-add input { width: 110px; }
+    .rule-add.rule-code input { flex: 1; min-width: 260px; width: auto; }
 
     .rule-add button {
       background: transparent;
@@ -462,6 +463,18 @@
           <input id="rule-value" type="number" step="any" placeholder="value" />
           <button id="rule-add-btn">add rule</button>
         </div>
+        <div class="rule-add rule-code">
+          <input id="rule-expr" type="text" maxlength="200"
+                 placeholder="or code your own: liquidity_usd / market_cap_usd > 0.05 and total_holders > 300" />
+          <button id="rule-expr-btn">add coded rule</button>
+        </div>
+        <p class="rules-hint">
+          coded rules support numbers, + - * / %, comparisons (including chained, e.g.
+          100000 &lt;= market_cap_usd &lt;= 1000000), and/or/not, parentheses, and these variables:
+          copium_score, market_cap_usd, liquidity_usd, liquidity_to_mcap_pct, volume_24h_usd,
+          price_usd, price_change_24h_pct, pair_age_days, top10_holders_pct, total_holders,
+          rugcheck_score, bonding_curve_pct, mint_renounced, freeze_renounced.
+        </p>
       </div>
     </div>
   </section>
@@ -680,7 +693,8 @@
         del.title = "delete rule";
         del.addEventListener("click", () => { rules.splice(i, 1); saveRules(); });
         row.appendChild(del);
-        row.appendChild(document.createTextNode(`${metricLabel(rule.metric)} ${rule.op} ${rule.value}`));
+        const label = rule.expr ? `{ ${rule.expr} }` : `${metricLabel(rule.metric)} ${rule.op} ${rule.value}`;
+        row.appendChild(document.createTextNode(label));
         rulesList.appendChild(row);
       });
     }
@@ -698,6 +712,18 @@
       rules.push({ metric: ruleMetric.value, op: ruleOp.value, value });
       ruleValue.value = "";
       saveRules();
+    });
+
+    const ruleExpr = document.getElementById("rule-expr");
+    document.getElementById("rule-expr-btn").addEventListener("click", () => {
+      const expr = ruleExpr.value.trim();
+      if (!expr) { ruleExpr.focus(); return; }
+      rules.push({ expr });
+      ruleExpr.value = "";
+      saveRules();
+    });
+    ruleExpr.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("rule-expr-btn").click();
     });
 
     renderRules();

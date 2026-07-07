@@ -31,6 +31,19 @@ scan, giving you an instant **WOULD BUY / WOULD NOT BUY** verdict by your own cr
 before the report, next to the COPIUM score. Rules with missing data come back as UNKNOWN and
 count as not passing.
 
+You can also **code your own rule** as a free-form expression combining any of those metrics:
+
+```
+liquidity_usd / market_cap_usd > 0.05 and total_holders > 300
+100000 <= market_cap_usd <= 5000000
+not (top10_holders_pct > 40) or copium_score >= 80
+```
+
+Expressions support numbers, `+ - * / %`, comparisons (including chained), `and / or / not`
+and parentheses. They're evaluated server-side with a whitelisted AST parser (no `eval`, no
+function calls, no attribute access), so a broken or malicious expression just comes back as
+INVALID instead of doing anything.
+
 ## 1. Get a free API key
 
 1. Go to [console.groq.com](https://console.groq.com) and create an account (free, no credit card).
