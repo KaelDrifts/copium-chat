@@ -12,7 +12,7 @@ function addMessage(role, text) {
   tag.textContent =
     role === "user" ? "[anon] " :
     role === "error" ? "[ERROR] " :
-    role.startsWith("verdict") ? "[RULES] " : "[COPIUM] ";
+    role.startsWith("verdict") ? "[RULES] " : "[HOOPIUM] ";
   div.appendChild(tag);
   div.appendChild(document.createTextNode(text));
   chat.appendChild(div);
@@ -31,8 +31,8 @@ function addRulesVerdict(data) {
 }
 
 function addScoreMessage(data) {
-  if (typeof data.copium_score === "number") {
-    addMessage("bot", `COPIUM score: ${data.copium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`);
+  if (typeof data.hoopium_score === "number") {
+    addMessage("bot", `HOOPIUM score: ${data.hoopium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`);
   }
 }
 
@@ -63,7 +63,7 @@ async function scan(message) {
     loading.remove();
     addMessage(
       "error",
-      "couldn't reach the COPIUM server on localhost:5001. start it with `python app.py` in the copium-chat folder, ser."
+      "couldn't reach the HOOPIUM server on localhost:5001. start it with `python app.py` in the copium-chat folder, ser."
     );
   } finally {
     sendBtn.disabled = false;
@@ -95,7 +95,7 @@ function metricLabel(key) {
 
 async function saveRules() {
   try {
-    await chrome.storage.local.set({ copiumRules: rules });
+    await chrome.storage.local.set({ hoopiumRules: rules });
   } catch (e) {}
   renderRules();
 }
@@ -155,8 +155,8 @@ ruleExpr.addEventListener("keydown", (e) => {
 // Load saved rules, then handle a pending context-menu scan
 (async () => {
   try {
-    const { copiumRules } = await chrome.storage.local.get("copiumRules");
-    if (Array.isArray(copiumRules)) rules = copiumRules;
+    const { hoopiumRules } = await chrome.storage.local.get("hoopiumRules");
+    if (Array.isArray(hoopiumRules)) rules = hoopiumRules;
   } catch (e) {}
   renderRules();
 

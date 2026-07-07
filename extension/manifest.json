@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "COPIUM — Solana Token Scanner",
+  "name": "HOOPIUM — Solana Token Scanner",
   "version": "1.0.0",
-  "description": "Paste a Solana contract address and get an instant rug-risk report from your local COPIUM server.",
+  "description": "Paste a Solana contract address and get an instant rug-risk report from your local HOOPIUM server.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "COPIUM scanner"
+    "default_title": "HOOPIUM scanner"
   },
   "background": {
     "service_worker": "background.js"

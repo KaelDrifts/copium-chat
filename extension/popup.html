@@ -174,7 +174,7 @@
 </head>
 <body>
   <div class="titlebar">
-    <span>COPIUM v2.0 — scanner</span>
+    <span>HOOPIUM v2.0 — scanner</span>
     <span><button id="rules-toggle">[+] my rules<span id="rules-count"></span></button> <span class="dots">[●●●]</span></span>
   </div>
   <div id="rules-body" hidden>
@@ -182,7 +182,7 @@
     <div id="rules-list"></div>
     <div class="rule-add">
       <select id="rule-metric">
-        <option value="copium_score">copium score (0-100)</option>
+        <option value="hoopium_score">hoopium score (0-100)</option>
         <option value="market_cap_usd">market cap ($)</option>
         <option value="liquidity_usd">liquidity ($)</option>
         <option value="liquidity_to_mcap_pct">liquidity / mcap (%)</option>
@@ -212,14 +212,14 @@
       <button id="rule-expr-btn">add</button>
     </div>
     <div class="rules-hint" style="margin-top:6px;">
-      coded rules are written in Python: numbers, + - * / %, comparisons, and/or/not, parens. variables: copium_score,
+      coded rules are written in Python: numbers, + - * / %, comparisons, and/or/not, parens. variables: hoopium_score,
       market_cap_usd, liquidity_usd, liquidity_to_mcap_pct, volume_24h_usd, price_usd,
       price_change_24h_pct, pair_age_days, top10_holders_pct, total_holders, rugcheck_score,
       bonding_curve_pct, mint_renounced, freeze_renounced.
     </div>
   </div>
   <div id="chat">
-    <div class="msg bot"><span class="tag">[COPIUM]</span> gm ser. paste a solana token CA and I'll scan it for rug vibes. (needs the COPIUM server running on localhost:5001)</div>
+    <div class="msg bot"><span class="tag">[HOOPIUM]</span> gm ser. paste a solana token CA and I'll scan it for rug vibes. (needs the HOOPIUM server running on localhost:5001)</div>
   </div>
   <div class="inputbar">
     <span class="prompt-char">&gt;</span>

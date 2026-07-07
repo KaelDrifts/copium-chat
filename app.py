@@ -51,7 +51,7 @@ PUMPFUN_INITIAL_REAL_TOKEN_RESERVES = 793_100_000_000_000
 
 CA_CANDIDATE_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
-SYSTEM_PROMPT = """You are COPIUM, a Solana token risk scanner with a crypto-twitter (CT) personality.
+SYSTEM_PROMPT = """You are HOOPIUM, a Solana token risk scanner with a crypto-twitter (CT) personality.
 
 You receive a PRE-COMPUTED risk analysis of a token (hard data, red flags, a risk score and
 comparable tokens). Your only job is to write it up as a readable terminal-style report.
@@ -69,7 +69,7 @@ Format the report with these sections, in this order, using plain text headers l
 6. GUT TAKE — one short paragraph: would you personally ape in or not, and why. Factor in the
    meta fit. ALWAYS end this section stating clearly that this is an automated opinion based
    on heuristics, NOT financial advice.
-7. COPIUM SCORE — the very LAST section. First line exactly in this format:
+7. HOOPIUM SCORE — the very LAST section. First line exactly in this format:
    "<score>/100 — RISK: <LOW|MEDIUM|HIGH>", then one line of justification.
 
 Strict rules (never break them):
@@ -456,17 +456,17 @@ def build_risk_report(ca):
         "narrative": narrative,
         "data_source_errors": errors,
     }
-    report["copium_score"] = compute_copium_score(report)
-    if report["copium_score"] >= 70:
+    report["hoopium_score"] = compute_hoopium_score(report)
+    if report["hoopium_score"] >= 70:
         report["risk_score"] = "LOW"
-    elif report["copium_score"] >= 40:
+    elif report["hoopium_score"] >= 40:
         report["risk_score"] = "MEDIUM"
     else:
         report["risk_score"] = "HIGH"
     return report, errors
 
 
-def compute_copium_score(report):
+def compute_hoopium_score(report):
     """0-100 'how safe does this look' score. 100 = cleanest. Plain penalty heuristics."""
     onchain = report["onchain"] or {}
     dex = report["market"] or {}
@@ -606,7 +606,7 @@ def collect_metrics(report):
     liq = dex.get("liquidity_usd")
     mcap = dex.get("market_cap_usd")
     return {
-        "copium_score": report["copium_score"],
+        "hoopium_score": report["hoopium_score"],
         "market_cap_usd": mcap,
         "liquidity_usd": liq,
         "liquidity_to_mcap_pct": round(liq / mcap * 100, 2) if liq is not None and mcap else None,
@@ -827,7 +827,7 @@ def auth_nonce():
     if not pubkey:
         return jsonify({"error": "Send a JSON body with a 'pubkey' field."}), 400
     nonce = (
-        "Sign this message to prove you own this wallet and unlock COPIUM.\n\n"
+        "Sign this message to prove you own this wallet and unlock HOOPIUM.\n\n"
         "This request will NOT trigger any transaction or cost any gas.\n\n"
         f"Nonce: {secrets.token_hex(16)}"
     )
@@ -905,13 +905,13 @@ def run_scan(message, rules=None):
     analysis_text = (
         format_report_for_llm(report)
         + format_rules_for_llm(rules_eval)
-        + f"\n\nCOPIUM SCORE (goes in the final section): {report['copium_score']}/100 (100 = cleanest)"
+        + f"\n\nHOOPIUM SCORE (goes in the final section): {report['hoopium_score']}/100 (100 = cleanest)"
         + f"\nCOMPUTED RISK LEVEL: {report['risk_score']}"
     )
 
     # Structured fields so the frontends can show the verdicts instantly
     extra = {
-        "copium_score": report["copium_score"],
+        "hoopium_score": report["hoopium_score"],
         "risk_level": report["risk_score"],
         "user_rules": rules_eval,
     }
