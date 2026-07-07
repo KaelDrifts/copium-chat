@@ -465,11 +465,11 @@
         </div>
         <div class="rule-add rule-code">
           <input id="rule-expr" type="text" maxlength="200"
-                 placeholder="or code your own: liquidity_usd / market_cap_usd > 0.05 and total_holders > 300" />
+                 placeholder="or code your own in python: liquidity_usd / market_cap_usd > 0.05 and total_holders > 300" />
           <button id="rule-expr-btn">add coded rule</button>
         </div>
         <p class="rules-hint">
-          coded rules support numbers, + - * / %, comparisons (including chained, e.g.
+          coded rules are written in Python: numbers, + - * / %, comparisons (including chained, e.g.
           100000 &lt;= market_cap_usd &lt;= 1000000), and/or/not, parentheses, and these variables:
           copium_score, market_cap_usd, liquidity_usd, liquidity_to_mcap_pct, volume_24h_usd,
           price_usd, price_change_24h_pct, pair_age_days, top10_holders_pct, total_holders,

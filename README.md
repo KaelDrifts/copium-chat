@@ -31,7 +31,7 @@ scan, giving you an instant **WOULD BUY / WOULD NOT BUY** verdict by your own cr
 before the report, next to the COPIUM score. Rules with missing data come back as UNKNOWN and
 count as not passing.
 
-You can also **code your own rule** as a free-form expression combining any of those metrics:
+You can also **code your own rule** as a free-form Python expression combining any of those metrics:
 
 ```
 liquidity_usd / market_cap_usd > 0.05 and total_holders > 300
@@ -39,8 +39,8 @@ liquidity_usd / market_cap_usd > 0.05 and total_holders > 300
 not (top10_holders_pct > 40) or copium_score >= 80
 ```
 
-Expressions support numbers, `+ - * / %`, comparisons (including chained), `and / or / not`
-and parentheses. They're evaluated server-side with a whitelisted AST parser (no `eval`, no
+Expressions are written in Python syntax: numbers, `+ - * / %`, comparisons (including chained),
+`and / or / not` and parentheses. They're evaluated server-side with a whitelisted AST parser (no `eval`, no
 function calls, no attribute access), so a broken or malicious expression just comes back as
 INVALID instead of doing anything.
 
