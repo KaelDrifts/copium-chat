@@ -27,4 +27,13 @@ GROQ_API_KEY=gsk_your_key_here
 
 Open [http://localhost:5001](http://localhost:5001) and that's it. gm.
 
+## 3. Connect your wallet
+
+The chat is unlocked by signing in with a Solana wallet ([Phantom](https://phantom.app)):
+
+1. Click **connect wallet** in the nav.
+2. Approve the connection and sign the login message in Phantom.
+
+The signature only proves you own the wallet — it never triggers a transaction and costs no gas. Sessions live in server memory, so restarting the server logs everyone out.
+
 > Note: port 5001 is used because on macOS port 5000 is usually taken by AirPlay Receiver.

@@ -1,11 +1,21 @@
 import os
+import secrets
+import time
 
+import base58
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
+from nacl.exceptions import BadSignatureError
+from nacl.signing import VerifyKey
 
 load_dotenv()
 
 app = Flask(__name__)
+
+# Wallet auth state (in-memory: resets on server restart)
+NONCES = {}  # pubkey -> (nonce, issued_at)
+SESSIONS = {}  # session token -> pubkey
+NONCE_TTL_SECONDS = 300
 
 SYSTEM_PROMPT = """You are COPIUM, an expert in crypto-twitter (CT) culture and memes.
 
@@ -39,8 +49,61 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/auth/nonce", methods=["POST"])
+def auth_nonce():
+    data = request.get_json(silent=True) or {}
+    pubkey = (data.get("pubkey") or "").strip()
+    if not pubkey:
+        return jsonify({"error": "Send a JSON body with a 'pubkey' field."}), 400
+    nonce = (
+        "Sign this message to prove you own this wallet and unlock COPIUM.\n\n"
+        "This request will NOT trigger any transaction or cost any gas.\n\n"
+        f"Nonce: {secrets.token_hex(16)}"
+    )
+    NONCES[pubkey] = (nonce, time.time())
+    return jsonify({"nonce": nonce})
+
+
+@app.route("/api/auth/verify", methods=["POST"])
+def auth_verify():
+    data = request.get_json(silent=True) or {}
+    pubkey = (data.get("pubkey") or "").strip()
+    signature_hex = (data.get("signature") or "").strip()
+    if not pubkey or not signature_hex:
+        return jsonify({"error": "Send 'pubkey' and 'signature' fields."}), 400
+
+    entry = NONCES.get(pubkey)
+    if not entry or time.time() - entry[1] > NONCE_TTL_SECONDS:
+        NONCES.pop(pubkey, None)
+        return jsonify({"error": "Nonce missing or expired, request a new one."}), 400
+
+    nonce = entry[0]
+    try:
+        verify_key = VerifyKey(base58.b58decode(pubkey))
+        verify_key.verify(nonce.encode("utf-8"), bytes.fromhex(signature_hex))
+    except (BadSignatureError, ValueError):
+        return jsonify({"error": "Invalid signature, ngmi."}), 401
+
+    del NONCES[pubkey]
+    token = secrets.token_hex(32)
+    SESSIONS[token] = pubkey
+    return jsonify({"token": token, "pubkey": pubkey})
+
+
+def get_session_pubkey():
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip()
+    return SESSIONS.get(token)
+
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
+    if not get_session_pubkey():
+        return (
+            jsonify({"error": "Wallet not connected. Connect your Phantom wallet first, ser."}),
+            401,
+        )
+
     if not os.environ.get("GROQ_API_KEY"):
         return (
             jsonify(

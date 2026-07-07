@@ -1,3 +1,5 @@
 flask
 groq
 python-dotenv
+pynacl
+base58
