@@ -42,7 +42,7 @@ async function scan(message) {
   input.value = "";
   sendBtn.disabled = true;
   input.disabled = true;
-  const loading = addMessage("bot", "scanning... (hitting 4 free APIs, gimme a few seconds ser)");
+  const loading = addMessage("bot", "scanning... gimme a few seconds ser");
 
   try {
     const res = await fetch(API_URL, {

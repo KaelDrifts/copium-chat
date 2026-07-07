@@ -560,7 +560,7 @@
         sessionStorage.setItem("copium_token", authToken);
         sessionStorage.setItem("copium_pubkey", walletPubkey);
         setConnectedUI();
-        addMessage("bot", "wallet verified, ser. wagmi. paste a solana token CA and I'll scan it for rug vibes (takes a few seconds — hitting 4 free APIs). not financial advice, obviously.");
+        addMessage("bot", "wallet verified, ser. wagmi. paste a solana token CA and I'll scan it for rug vibes (takes a few seconds). not financial advice, obviously.");
       } catch (err) {
         addMessage("error", err.message || "wallet connection rejected, ngmi");
       } finally {
