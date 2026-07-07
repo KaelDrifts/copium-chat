@@ -16,9 +16,20 @@ returns an automated risk report. Flask backend + Groq (free) for the write-up, 
 | [RugCheck](https://rugcheck.xyz) | independent risk score to cross-reference |
 
 Red flags are computed with plain if/else heuristics (active authorities, concentrated holders,
-thin liquidity vs mcap, dead volume) into a **LOW / MEDIUM / HIGH** score, and the pre-computed
-result is handed to the LLM only to write it up as a readable report. If Groq is down or
-rate-limited, the raw scan is returned instead.
+thin liquidity vs mcap, dead volume) into a **0-100 COPIUM score** (100 = cleanest) with a
+LOW / MEDIUM / HIGH risk level, and the pre-computed result is handed to the LLM only to write
+it up as a readable report. If Groq is down or rate-limited, the raw scan is returned instead.
+
+## Your own buy rules
+
+Both the web terminal ("my buy rules" panel under the chat) and the extension popup ("my rules"
+in the titlebar) let you define your own thresholds over any scanned metric — market cap,
+liquidity, liquidity/mcap %, volume, pair age, top-10 holder %, total holders, RugCheck score,
+bonding curve %, COPIUM score, mint/freeze renounced. Pick a metric, an operator (`>= <= > < ==`)
+and a value; add as many rules as you want. They're saved in your browser and checked on every
+scan, giving you an instant **WOULD BUY / WOULD NOT BUY** verdict by your own criteria — shown
+before the report, next to the COPIUM score. Rules with missing data come back as UNKNOWN and
+count as not passing.
 
 ## 1. Get a free API key
 

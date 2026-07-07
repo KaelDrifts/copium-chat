@@ -251,6 +251,78 @@
     #chat::-webkit-scrollbar-thumb { background: var(--green-dim); }
     #chat::-webkit-scrollbar-track { background: #0a0a0a; }
 
+    .msg.verdict-pass { color: var(--green); }
+    .msg.verdict-pass .tag { color: #00cc00; }
+    .msg.verdict-fail { color: var(--red); }
+    .msg.verdict-fail .tag { color: #ff0000; }
+
+    /* ---------- BUY RULES PANEL ---------- */
+    .rules-panel {
+      border: 1px solid var(--green-dim);
+      border-top: none;
+      background: var(--panel);
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .rules-toggle {
+      background: transparent;
+      border: none;
+      color: var(--amber);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .rules-toggle:hover { text-shadow: 0 0 6px var(--amber); }
+
+    .rules-hint { color: var(--green-dim); font-size: 12px; line-height: 1.5; margin: 10px 0; }
+
+    .rule-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      color: #b8ffb8;
+      font-size: 12px;
+    }
+
+    .rule-row .rule-del {
+      background: transparent;
+      border: none;
+      color: var(--red);
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .rule-add { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+    .rule-add select, .rule-add input {
+      background: #000;
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 5px 6px;
+      outline: none;
+    }
+
+    .rule-add input { width: 110px; }
+
+    .rule-add button {
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    .rule-add button:hover { background: var(--green); color: #000; }
+
     /* ---------- FOOTER ---------- */
     footer {
       border-top: 1px solid var(--green-dim);
@@ -305,7 +377,10 @@
     <p>
       The report covers <span class="hl">mint &amp; freeze authority, top-10 holder concentration,
       liquidity vs market cap, volume, bonding curve status</span> and how similar-named tokens
-      performed, plus a LOW / MEDIUM / HIGH risk score computed with plain heuristics.
+      performed, plus a <span class="hl">0-100 COPIUM score</span> computed with plain heuristics.
+      And you can set <span class="hl">your own buy rules</span> (market cap, holders, whatever
+      threshold you want) — every scan checks them and gives you an instant
+      WOULD BUY / WOULD NOT BUY verdict by your own criteria.
     </p>
     <p>
       What it does <span class="hl">not</span> do: financial advice, price predictions,
@@ -349,6 +424,44 @@
         <span class="prompt-char">&gt;</span>
         <input id="input" type="text" autocomplete="off" placeholder="connect your wallet first, ser..." disabled />
         <button id="send" disabled>send</button>
+      </div>
+    </div>
+
+    <div class="rules-panel">
+      <button id="rules-toggle" class="rules-toggle">[+] my buy rules<span id="rules-count"></span></button>
+      <div id="rules-body" hidden>
+        <p class="rules-hint">
+          set your own thresholds — every scan checks them and gives you an instant
+          WOULD BUY / WOULD NOT BUY verdict on top of the COPIUM score. saved in this browser.
+        </p>
+        <div id="rules-list"></div>
+        <div class="rule-add">
+          <select id="rule-metric">
+            <option value="copium_score">copium score (0-100)</option>
+            <option value="market_cap_usd">market cap ($)</option>
+            <option value="liquidity_usd">liquidity ($)</option>
+            <option value="liquidity_to_mcap_pct">liquidity / mcap (%)</option>
+            <option value="volume_24h_usd">24h volume ($)</option>
+            <option value="price_usd">price ($)</option>
+            <option value="price_change_24h_pct">24h price change (%)</option>
+            <option value="pair_age_days">pair age (days)</option>
+            <option value="top10_holders_pct">top 10 holders (%)</option>
+            <option value="total_holders">total holders</option>
+            <option value="rugcheck_score">rugcheck score</option>
+            <option value="bonding_curve_pct">bonding curve (%)</option>
+            <option value="mint_renounced">mint renounced (1=yes)</option>
+            <option value="freeze_renounced">freeze renounced (1=yes)</option>
+          </select>
+          <select id="rule-op">
+            <option>&gt;=</option>
+            <option>&lt;=</option>
+            <option>&gt;</option>
+            <option>&lt;</option>
+            <option>==</option>
+          </select>
+          <input id="rule-value" type="number" step="any" placeholder="value" />
+          <button id="rule-add-btn">add rule</button>
+        </div>
       </div>
     </div>
   </section>
@@ -453,11 +566,27 @@
       div.className = "msg " + role;
       const tag = document.createElement("span");
       tag.className = "tag";
-      tag.textContent = role === "user" ? "[anon] " : role === "bot" ? "[COPIUM] " : "[ERROR] ";
+      tag.textContent =
+        role === "user" ? "[anon] " :
+        role === "error" ? "[ERROR] " :
+        role.startsWith("verdict") ? "[RULES] " : "[COPIUM] ";
       div.appendChild(tag);
       div.appendChild(document.createTextNode(text));
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addVerdictMessages(data) {
+      if (typeof data.copium_score === "number") {
+        addMessage("bot", `COPIUM score: ${data.copium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`);
+      }
+      if (data.user_rules) {
+        const r = data.user_rules;
+        addMessage(
+          r.passed ? "verdict-pass" : "verdict-fail",
+          `${r.passed ? "✓" : "✗"} ${r.verdict} per your rules (${r.n_pass}/${r.n_rules} passed)`
+        );
+      }
     }
 
     async function sendMessage() {
@@ -476,7 +605,7 @@
             "Content-Type": "application/json",
             "Authorization": "Bearer " + authToken,
           },
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({ message, rules }),
         });
         const data = await res.json();
         if (res.status === 401) {
@@ -487,6 +616,7 @@
         if (!res.ok || data.error) {
           addMessage("error", data.error || "something broke, ngmi");
         } else {
+          addVerdictMessages(data);
           addMessage("bot", data.reply);
         }
       } catch (err) {
@@ -504,6 +634,69 @@
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") sendMessage();
     });
+
+    // ---------- user buy rules (saved in this browser) ----------
+    const rulesToggle = document.getElementById("rules-toggle");
+    const rulesBody = document.getElementById("rules-body");
+    const rulesList = document.getElementById("rules-list");
+    const rulesCount = document.getElementById("rules-count");
+    const ruleMetric = document.getElementById("rule-metric");
+    const ruleOp = document.getElementById("rule-op");
+    const ruleValue = document.getElementById("rule-value");
+
+    let rules = [];
+    try { rules = JSON.parse(localStorage.getItem("copium_rules")) || []; } catch (e) {}
+
+    function metricLabel(key) {
+      const opt = ruleMetric.querySelector(`option[value="${key}"]`);
+      return opt ? opt.textContent : key;
+    }
+
+    function saveRules() {
+      localStorage.setItem("copium_rules", JSON.stringify(rules));
+      renderRules();
+    }
+
+    function renderRules() {
+      rulesCount.textContent = rules.length ? ` (${rules.length} active)` : "";
+      rulesList.innerHTML = "";
+      if (!rules.length) {
+        const p = document.createElement("div");
+        p.className = "rule-row";
+        p.textContent = "no rules yet — add one below, ser";
+        rulesList.appendChild(p);
+        return;
+      }
+      rules.forEach((rule, i) => {
+        const row = document.createElement("div");
+        row.className = "rule-row";
+        const del = document.createElement("button");
+        del.className = "rule-del";
+        del.textContent = "[x]";
+        del.title = "delete rule";
+        del.addEventListener("click", () => { rules.splice(i, 1); saveRules(); });
+        row.appendChild(del);
+        row.appendChild(document.createTextNode(`${metricLabel(rule.metric)} ${rule.op} ${rule.value}`));
+        rulesList.appendChild(row);
+      });
+    }
+
+    rulesToggle.addEventListener("click", () => {
+      rulesBody.hidden = !rulesBody.hidden;
+      rulesToggle.textContent = (rulesBody.hidden ? "[+]" : "[-]") + " my buy rules";
+      rulesToggle.appendChild(rulesCount);
+      renderRules();
+    });
+
+    document.getElementById("rule-add-btn").addEventListener("click", () => {
+      const value = parseFloat(ruleValue.value);
+      if (Number.isNaN(value)) { ruleValue.focus(); return; }
+      rules.push({ metric: ruleMetric.value, op: ruleOp.value, value });
+      ruleValue.value = "";
+      saveRules();
+    });
+
+    renderRules();
   </script>
 </body>
 </html>

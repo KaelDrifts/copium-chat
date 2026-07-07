@@ -56,9 +56,13 @@ comparable tokens). Your only job is to write it up as a readable terminal-style
 Format the report with these sections, in this order, using plain text headers like "== HARD DATA ==":
 1. HARD DATA — price, liquidity, 24h volume, market cap, pair age, authorities, top-10 holder %, bonding curve / migration status.
 2. RED FLAGS — every flag found, one per line, worst first. If none, say so.
-3. RISK SCORE — the LOW / MEDIUM / HIGH verdict and a one-line justification.
+3. COPIUM SCORE — the 0-100 score (100 = cleanest) with the LOW / MEDIUM / HIGH risk level
+   and a one-line justification.
 4. COMPARABLES — how similar-named tokens are doing, and what that suggests.
-5. GUT TAKE — one short paragraph: would you personally ape in or not, and why. ALWAYS end this
+5. YOUR RULES — ONLY if the analysis includes "USER'S OWN BUY RULES": restate each rule with
+   its PASS/FAIL/UNKNOWN result and the already-computed WOULD BUY / WOULD NOT BUY verdict.
+   Never change that verdict. Skip this section entirely if no user rules are present.
+6. GUT TAKE — one short paragraph: would you personally ape in or not, and why. ALWAYS end this
    section stating clearly that this is an automated opinion based on heuristics, NOT financial advice.
 
 Strict rules (never break them):
@@ -391,13 +395,6 @@ def build_risk_report(ca):
     if onchain is None:
         warnings.append("On-chain data (authorities / holders) unavailable — score is less reliable.")
 
-    if len(red_flags) >= 2:
-        score = "HIGH"
-    elif len(red_flags) == 1 or len(warnings) >= 2:
-        score = "MEDIUM"
-    else:
-        score = "LOW"
-
     report = {
         "ca": ca,
         "market": dex,
@@ -406,11 +403,166 @@ def build_risk_report(ca):
         "rugcheck": rugcheck,
         "red_flags": red_flags,
         "warnings": warnings,
-        "risk_score": score,
         "comparables": similar,
         "data_source_errors": errors,
     }
+    report["copium_score"] = compute_copium_score(report)
+    if report["copium_score"] >= 70:
+        report["risk_score"] = "LOW"
+    elif report["copium_score"] >= 40:
+        report["risk_score"] = "MEDIUM"
+    else:
+        report["risk_score"] = "HIGH"
     return report, errors
+
+
+def compute_copium_score(report):
+    """0-100 'how safe does this look' score. 100 = cleanest. Plain penalty heuristics."""
+    onchain = report["onchain"] or {}
+    dex = report["market"] or {}
+    rugcheck = report["rugcheck"] or {}
+    pump = report["pumpfun"] or {}
+
+    score = 100
+    if rugcheck.get("rugged"):
+        score -= 60
+    if onchain.get("mint_authority"):
+        score -= 25
+    if onchain.get("freeze_authority"):
+        score -= 25
+
+    top10 = onchain.get("top10_holders_pct")
+    if top10 is not None:
+        if top10 >= 80:
+            score -= 30
+        elif top10 >= 50:
+            score -= 20
+        elif top10 >= 30:
+            score -= 10
+
+    liq = dex.get("liquidity_usd")
+    mcap = dex.get("market_cap_usd")
+    vol = dex.get("volume_24h_usd")
+    age = dex.get("pair_age_days")
+    if liq is not None:
+        if liq < 1_000:
+            score -= 30
+        elif mcap and liq / mcap < 0.02:
+            score -= 20
+        elif mcap and liq / mcap < 0.05:
+            score -= 10
+    if vol is not None and mcap and (vol / mcap < 0.01 or vol < 100):
+        score -= 10
+    if age is not None and age < 1:
+        score -= 10
+    if pump.get("is_pumpfun") and not pump.get("migrated_to_raydium"):
+        score -= 5
+
+    rc_score = rugcheck.get("score")
+    if isinstance(rc_score, (int, float)) and rc_score >= 50:
+        score -= 10
+
+    if report["onchain"] is None:
+        score -= 10  # can't verify authorities/holders: less trust
+
+    # Keep the number consistent with the flags: hard red flags cap the score
+    if len(report["red_flags"]) >= 2:
+        score = min(score, 35)
+    elif len(report["red_flags"]) == 1:
+        score = min(score, 65)
+
+    return max(0, min(100, score))
+
+
+# ---------------------------------------------------------------------------
+# User-defined buy rules
+# ---------------------------------------------------------------------------
+
+ALLOWED_RULE_OPS = {">=", "<=", ">", "<", "=="}
+
+
+def collect_metrics(report):
+    """Flat metric dict the user can write rules against."""
+    dex = report["market"] or {}
+    onchain = report["onchain"] or {}
+    rugcheck = report["rugcheck"] or {}
+    pump = report["pumpfun"] or {}
+    liq = dex.get("liquidity_usd")
+    mcap = dex.get("market_cap_usd")
+    return {
+        "copium_score": report["copium_score"],
+        "market_cap_usd": mcap,
+        "liquidity_usd": liq,
+        "liquidity_to_mcap_pct": round(liq / mcap * 100, 2) if liq is not None and mcap else None,
+        "volume_24h_usd": dex.get("volume_24h_usd"),
+        "price_usd": dex.get("price_usd"),
+        "price_change_24h_pct": dex.get("price_change_24h_pct"),
+        "pair_age_days": dex.get("pair_age_days"),
+        "top10_holders_pct": onchain.get("top10_holders_pct"),
+        "total_holders": rugcheck.get("total_holders") or None,
+        "rugcheck_score": rugcheck.get("score"),
+        "bonding_curve_pct": pump.get("bonding_curve_pct"),
+        "mint_renounced": None if report["onchain"] is None else (0 if onchain.get("mint_authority") else 1),
+        "freeze_renounced": None if report["onchain"] is None else (0 if onchain.get("freeze_authority") else 1),
+    }
+
+
+def evaluate_user_rules(report, rules):
+    """Check the user's own buy rules against the scanned metrics.
+
+    rules: list of {"metric": <key of collect_metrics>, "op": ">=|<=|>|<|==", "value": number}
+    Returns None when there are no usable rules.
+    """
+    if not isinstance(rules, list):
+        return None
+    metrics = collect_metrics(report)
+    results = []
+    for rule in rules[:20]:
+        if not isinstance(rule, dict):
+            continue
+        metric = rule.get("metric")
+        op = rule.get("op")
+        value = _to_float(rule.get("value"))
+        if metric not in metrics or op not in ALLOWED_RULE_OPS or value is None:
+            continue
+        actual = metrics[metric]
+        if actual is None:
+            status = "unknown"
+        else:
+            passed = {
+                ">=": actual >= value,
+                "<=": actual <= value,
+                ">": actual > value,
+                "<": actual < value,
+                "==": actual == value,
+            }[op]
+            status = "pass" if passed else "fail"
+        results.append({"metric": metric, "op": op, "value": value, "actual": actual, "status": status})
+    if not results:
+        return None
+    n_pass = sum(1 for r in results if r["status"] == "pass")
+    all_pass = n_pass == len(results)
+    return {
+        "verdict": "WOULD BUY" if all_pass else "WOULD NOT BUY",
+        "passed": all_pass,
+        "n_pass": n_pass,
+        "n_rules": len(results),
+        "results": results,
+    }
+
+
+def format_rules_for_llm(rules_eval):
+    if not rules_eval:
+        return ""
+    lines = ["", "USER'S OWN BUY RULES (already evaluated, do not re-judge them):"]
+    for r in rules_eval["results"]:
+        actual = "no data" if r["actual"] is None else _fmt(r["actual"])
+        lines.append(f"- {r['metric']} {r['op']} {_fmt(r['value'])}: actual {actual} -> {r['status'].upper()}")
+    lines.append(
+        f"VERDICT PER USER RULES: {rules_eval['verdict']} "
+        f"({rules_eval['n_pass']}/{rules_eval['n_rules']} rules passed)"
+    )
+    return "\n".join(lines)
 
 
 def format_report_for_llm(report):
@@ -476,7 +628,8 @@ def format_report_for_llm(report):
     else:
         lines.append("- none")
     lines.append("")
-    lines.append(f"COMPUTED RISK SCORE: {report['risk_score']}")
+    lines.append(f"COPIUM SCORE: {report['copium_score']}/100 (100 = cleanest)")
+    lines.append(f"COMPUTED RISK LEVEL: {report['risk_score']}")
 
     lines.append("")
     lines.append("COMPARABLE TOKENS (similar name/symbol on Solana):")
@@ -565,7 +718,7 @@ def get_session_pubkey():
     return SESSIONS.get(token)
 
 
-def run_scan(message):
+def run_scan(message, rules=None):
     """Scan logic shared by /api/chat (web, wallet-gated) and /api/scan (browser extension)."""
     ca = extract_solana_ca(message)
     if not ca:
@@ -599,7 +752,15 @@ def run_scan(message):
             }
         )
 
-    analysis_text = format_report_for_llm(report)
+    rules_eval = evaluate_user_rules(report, rules)
+    analysis_text = format_report_for_llm(report) + format_rules_for_llm(rules_eval)
+
+    # Structured fields so the frontends can show the verdicts instantly
+    extra = {
+        "copium_score": report["copium_score"],
+        "risk_level": report["risk_score"],
+        "user_rules": rules_eval,
+    }
 
     try:
         client = get_groq_client()
@@ -613,13 +774,14 @@ def run_scan(message):
             max_tokens=1024,
         )
         reply = completion.choices[0].message.content
-        return jsonify({"reply": reply})
+        return jsonify({"reply": reply, **extra})
     except Exception as e:
         # LLM down/rate-limited: still deliver the computed analysis instead of breaking
         return jsonify(
             {
                 "reply": "groq is not cooperating right now "
-                f"({e}), so here's the raw scan instead:\n\n{analysis_text}"
+                f"({e}), so here's the raw scan instead:\n\n{analysis_text}",
+                **extra,
             }
         )
 
@@ -637,7 +799,7 @@ def chat():
     if not message:
         return jsonify({"error": "Send a JSON body with a 'message' field."}), 400
 
-    return run_scan(message)
+    return run_scan(message, data.get("rules"))
 
 
 @app.route("/api/scan", methods=["POST", "OPTIONS"])
@@ -651,7 +813,7 @@ def scan():
     if not message:
         return _cors(jsonify({"error": "Send a JSON body with a 'message' field."})), 400
 
-    response = run_scan(message)
+    response = run_scan(message, data.get("rules"))
     # run_scan may return (response, status) or just a response
     if isinstance(response, tuple):
         return _cors(response[0]), response[1]

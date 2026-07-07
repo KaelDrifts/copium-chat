@@ -99,6 +99,67 @@
     #chat::-webkit-scrollbar-thumb { background: var(--green-dim); }
     #chat::-webkit-scrollbar-track { background: #0a0a0a; }
 
+    .msg.verdict-pass { color: var(--green); }
+    .msg.verdict-pass .tag { color: #00cc00; }
+    .msg.verdict-fail { color: var(--red); }
+    .msg.verdict-fail .tag { color: #ff0000; }
+
+    .titlebar button {
+      background: transparent;
+      border: none;
+      color: var(--amber);
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    #rules-body {
+      border-bottom: 1px solid var(--green-dim);
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    .rules-hint { color: var(--green-dim); line-height: 1.4; margin-bottom: 6px; }
+
+    .rule-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; color: #b8ffb8; }
+
+    .rule-row .rule-del {
+      background: transparent;
+      border: none;
+      color: var(--red);
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 11px;
+      padding: 0;
+    }
+
+    .rule-add { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+
+    .rule-add select, .rule-add input {
+      background: #000;
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 11px;
+      padding: 3px 4px;
+      outline: none;
+    }
+
+    .rule-add input { width: 80px; }
+
+    .rule-add button {
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 11px;
+      padding: 3px 8px;
+      cursor: pointer;
+    }
+
+    .rule-add button:hover { background: var(--green); color: #000; }
+
     .footer {
       border-top: 1px solid var(--green-dim);
       padding: 6px 10px;
@@ -113,7 +174,38 @@
 <body>
   <div class="titlebar">
     <span>COPIUM v2.0 — scanner</span>
-    <span class="dots">[●●●]</span>
+    <span><button id="rules-toggle">[+] my rules<span id="rules-count"></span></button> <span class="dots">[●●●]</span></span>
+  </div>
+  <div id="rules-body" hidden>
+    <div class="rules-hint">your own buy thresholds — checked on every scan for an instant WOULD BUY / WOULD NOT BUY verdict.</div>
+    <div id="rules-list"></div>
+    <div class="rule-add">
+      <select id="rule-metric">
+        <option value="copium_score">copium score (0-100)</option>
+        <option value="market_cap_usd">market cap ($)</option>
+        <option value="liquidity_usd">liquidity ($)</option>
+        <option value="liquidity_to_mcap_pct">liquidity / mcap (%)</option>
+        <option value="volume_24h_usd">24h volume ($)</option>
+        <option value="price_usd">price ($)</option>
+        <option value="price_change_24h_pct">24h price change (%)</option>
+        <option value="pair_age_days">pair age (days)</option>
+        <option value="top10_holders_pct">top 10 holders (%)</option>
+        <option value="total_holders">total holders</option>
+        <option value="rugcheck_score">rugcheck score</option>
+        <option value="bonding_curve_pct">bonding curve (%)</option>
+        <option value="mint_renounced">mint renounced (1=yes)</option>
+        <option value="freeze_renounced">freeze renounced (1=yes)</option>
+      </select>
+      <select id="rule-op">
+        <option>&gt;=</option>
+        <option>&lt;=</option>
+        <option>&gt;</option>
+        <option>&lt;</option>
+        <option>==</option>
+      </select>
+      <input id="rule-value" type="number" step="any" placeholder="value" />
+      <button id="rule-add-btn">add</button>
+    </div>
   </div>
   <div id="chat">
     <div class="msg bot"><span class="tag">[COPIUM]</span> gm ser. paste a solana token CA and I'll scan it for rug vibes. (needs the COPIUM server running on localhost:5001)</div>
