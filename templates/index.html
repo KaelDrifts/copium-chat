@@ -343,6 +343,8 @@
     .ext-copy p { line-height: 1.8; font-size: 15px; margin-bottom: 14px; color: #b8ffb8; }
     .ext-copy .hl { color: var(--amber); }
 
+    .ext-download { display: inline-block; margin-bottom: 16px; font-size: 15px; }
+
     .ext-steps { margin: 6px 0 0 20px; color: #9adf9a; font-size: 14px; line-height: 2; }
     .ext-steps .hl { color: var(--amber); }
 
@@ -378,7 +380,7 @@
       <a href="#features">specs</a>
       <a href="#chat-section">terminal</a>
       <a href="#extension">extension</a>
-      <a href="https://github.com/KaelDrifts/copium-chat/blob/main/WHITEPAPER.md" target="_blank" rel="noopener">whitepaper</a>
+      <a href="/whitepaper">whitepaper</a>
       <button id="wallet-btn">connect wallet</button>
     </div>
   </nav>
@@ -394,6 +396,7 @@
     <h1>HOOPIUM</h1>
     <p class="tagline">solana token risk scanner — paste a CA, get the truth</p>
     <p class="sub">
+      Trained on thousands of hours in the trenches of the market.
       Drop any Solana contract address into the terminal and HOOPIUM pulls
       on-chain data, liquidity, holders, pump.fun status and RugCheck,
       runs the red-flag heuristics and writes you a risk report with a score.
@@ -410,7 +413,8 @@
     <h2 class="section-title">cat about.txt</h2>
     <p>
       <span class="hl">HOOPIUM</span> has one single mission: scanning Solana tokens for rug vibes
-      before you ape. Paste a <span class="hl">contract address (CA)</span> in the terminal and it
+      before you ape. Trained on <span class="hl">thousands of hours of market data</span> from
+      the trenches. Paste a <span class="hl">contract address (CA)</span> in the terminal and it
       checks DexScreener, the Solana chain, pump.fun and RugCheck.
     </p>
     <p>
@@ -543,10 +547,11 @@
           Your buy rules work there too, so you get your WOULD BUY / WOULD NOT BUY verdict
           mid-trade, in seconds.
         </p>
+        <a class="btn btn-amber ext-download" href="/download/hoopium-extension.zip">&gt; download extension (.zip)</a>
         <ol class="ext-steps">
-          <li>grab the code: <a href="https://github.com/KaelDrifts/copium-chat" target="_blank" rel="noopener">github.com/KaelDrifts/copium-chat</a> (folder <span class="hl">extension/</span>)</li>
+          <li>click the button above and <span class="hl">unzip</span> the download</li>
           <li>open <span class="hl">chrome://extensions</span> and enable <span class="hl">Developer mode</span></li>
-          <li>click <span class="hl">Load unpacked</span> and pick the <span class="hl">extension/</span> folder</li>
+          <li>click <span class="hl">Load unpacked</span> and pick the unzipped <span class="hl">hoopium-extension</span> folder</li>
           <li>pin HOOPIUM to your toolbar and start scanning, ser</li>
         </ol>
       </div>

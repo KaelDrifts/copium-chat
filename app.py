@@ -1,14 +1,16 @@
 import ast
+import io
 import operator
 import os
 import re
 import secrets
 import time
+import zipfile
 
 import base58
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey
 
@@ -815,9 +817,42 @@ def _fmt(value):
 # ---------------------------------------------------------------------------
 
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/download/hoopium-extension.zip")
+def download_extension():
+    """Serve the Chrome extension as a zip, so nobody needs the repo to install it."""
+    ext_dir = os.path.join(BASE_DIR, "extension")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, _, files in os.walk(ext_dir):
+            for name in files:
+                full = os.path.join(root, name)
+                rel = os.path.relpath(full, ext_dir)
+                zf.write(full, os.path.join("hoopium-extension", rel))
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name="hoopium-extension.zip",
+    )
+
+
+@app.route("/whitepaper")
+def whitepaper():
+    try:
+        with open(os.path.join(BASE_DIR, "WHITEPAPER.md"), encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        content = "whitepaper unavailable, ser."
+    return render_template("whitepaper.html", content=content)
 
 
 @app.route("/api/auth/nonce", methods=["POST"])

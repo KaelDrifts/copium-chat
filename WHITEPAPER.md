@@ -98,8 +98,8 @@ The scanner also ships as a **Chrome extension**: a mini HOOPIUM terminal in the
 - **Self-hosted.** HOOPIUM runs locally: a lightweight Flask backend and a vanilla HTML/JS frontend. Your scans, your rules and your wallet signature never touch a third-party HOOPIUM server, because there isn't one.
 - **Free public data only.** DexScreener, public Solana RPC, pump.fun and RugCheck. No paid APIs, no API keys for data, no trackers.
 - **Wallet sign-in without risk.** The web terminal unlocks with a Solana wallet message signature — it proves ownership, triggers no transaction and costs no gas.
-- **Deterministic core.** Every flag and every point of the score comes from published if/else heuristics anyone can read in the source. The language model only writes prose.
-- **Open source.** The full code lives at [github.com/KaelDrifts/copium-chat](https://github.com/KaelDrifts/copium-chat).
+- **Deterministic core.** Every flag and every point of the score comes from published if/else heuristics anyone can read in the source they run. The language model only writes prose.
+- **One-click distribution.** The Chrome extension is served directly by the scanner itself (`/download/hoopium-extension.zip`) — no external downloads.
 
 ## What HOOPIUM is not
 
