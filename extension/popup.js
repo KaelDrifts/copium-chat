@@ -20,16 +20,19 @@ function addMessage(role, text) {
   return div;
 }
 
-function addVerdictMessages(data) {
-  if (typeof data.copium_score === "number") {
-    addMessage("bot", `COPIUM score: ${data.copium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`);
-  }
+function addRulesVerdict(data) {
   if (data.user_rules) {
     const r = data.user_rules;
     addMessage(
       r.passed ? "verdict-pass" : "verdict-fail",
       `${r.passed ? "✓" : "✗"} ${r.verdict} per your rules (${r.n_pass}/${r.n_rules} passed)`
     );
+  }
+}
+
+function addScoreMessage(data) {
+  if (typeof data.copium_score === "number") {
+    addMessage("bot", `COPIUM score: ${data.copium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`);
   }
 }
 
@@ -52,8 +55,9 @@ async function scan(message) {
     if (!res.ok || data.error) {
       addMessage("error", data.error || "something broke, ngmi");
     } else {
-      addVerdictMessages(data);
+      addRulesVerdict(data);
       addMessage("bot", data.reply);
+      addScoreMessage(data);
     }
   } catch (err) {
     loading.remove();

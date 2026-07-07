@@ -56,18 +56,19 @@ comparable tokens). Your only job is to write it up as a readable terminal-style
 Format the report with these sections, in this order, using plain text headers like "== HARD DATA ==":
 1. HARD DATA — price, liquidity, 24h volume, market cap, pair age, authorities, top-10 holder %, bonding curve / migration status.
 2. RED FLAGS — every flag found, one per line, worst first. If none, say so.
-3. COPIUM SCORE — the 0-100 score (100 = cleanest) with the LOW / MEDIUM / HIGH risk level
-   and a one-line justification.
-4. COMPARABLES — how similar-named tokens are doing, and what that suggests.
-5. YOUR RULES — ONLY if the analysis includes "USER'S OWN BUY RULES": restate each rule with
+3. COMPARABLES — how similar-named tokens are doing, and what that suggests.
+4. YOUR RULES — ONLY if the analysis includes "USER'S OWN BUY RULES": restate each rule with
    its PASS/FAIL/UNKNOWN result and the already-computed WOULD BUY / WOULD NOT BUY verdict.
    Never change that verdict. Skip this section entirely if no user rules are present.
-6. GUT TAKE — one short paragraph: would you personally ape in or not, and why. ALWAYS end this
+5. GUT TAKE — one short paragraph: would you personally ape in or not, and why. ALWAYS end this
    section stating clearly that this is an automated opinion based on heuristics, NOT financial advice.
+6. COPIUM SCORE — the very LAST section: the 0-100 score (100 = cleanest) with the
+   LOW / MEDIUM / HIGH risk level and a one-line justification.
 
 Strict rules (never break them):
 - ONLY use the data given to you. NEVER invent numbers, holders, flags or comparables.
-- If the analysis says a data source failed or data is missing, mention it honestly.
+- NEVER talk about data sources, APIs, or where a number came from. If a value is missing,
+  just call it unavailable and move on.
 - Light CT slang is fine (ser, ape, rug, dyor) but stay factual and readable.
 - No price predictions, no promises of profit. The gut take is an opinion on risk, not a signal.
 - Reply in English unless the analysis is clearly in another language.
@@ -593,8 +594,6 @@ def format_report_for_llm(report):
         )
         lines.append(f"- Top 10 accounts hold: {_fmt(onchain.get('top10_holders_pct'))}% of supply "
                      "(includes liquidity pool / bonding curve accounts)")
-        if onchain.get("source"):
-            lines.append(f"- (authority/holder data source: {onchain['source']})")
     else:
         lines.append("- On-chain authority/holder data unavailable.")
 
@@ -628,10 +627,6 @@ def format_report_for_llm(report):
     else:
         lines.append("- none")
     lines.append("")
-    lines.append(f"COPIUM SCORE: {report['copium_score']}/100 (100 = cleanest)")
-    lines.append(f"COMPUTED RISK LEVEL: {report['risk_score']}")
-
-    lines.append("")
     lines.append("COMPARABLE TOKENS (similar name/symbol on Solana):")
     if report["comparables"]:
         for c in report["comparables"]:
@@ -642,11 +637,6 @@ def format_report_for_llm(report):
             )
     else:
         lines.append("- none found")
-
-    if report["data_source_errors"]:
-        lines.append("")
-        lines.append("DATA SOURCES THAT FAILED (mention this in the report):")
-        lines.extend(f"- {e}" for e in report["data_source_errors"])
 
     return "\n".join(lines)
 
@@ -753,7 +743,12 @@ def run_scan(message, rules=None):
         )
 
     rules_eval = evaluate_user_rules(report, rules)
-    analysis_text = format_report_for_llm(report) + format_rules_for_llm(rules_eval)
+    analysis_text = (
+        format_report_for_llm(report)
+        + format_rules_for_llm(rules_eval)
+        + f"\n\nCOPIUM SCORE (goes in the final section): {report['copium_score']}/100 (100 = cleanest)"
+        + f"\nCOMPUTED RISK LEVEL: {report['risk_score']}"
+    )
 
     # Structured fields so the frontends can show the verdicts instantly
     extra = {
