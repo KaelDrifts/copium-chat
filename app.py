@@ -845,6 +845,16 @@ def download_extension():
     )
 
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
+@app.route("/specs")
+def specs():
+    return render_template("specs.html")
+
+
 @app.route("/whitepaper")
 def whitepaper():
     try:

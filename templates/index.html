@@ -181,6 +181,16 @@
     .about p { line-height: 1.8; font-size: 15px; margin-bottom: 14px; color: #b8ffb8; }
     .about .hl { color: var(--amber); }
 
+    .read-more {
+      color: var(--amber);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .read-more:hover { text-shadow: 0 0 6px var(--amber); }
+
+    .specs-more { margin-top: 18px; }
+
     .features {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -410,58 +420,47 @@
   </header>
 
   <section id="about" class="about">
-    <h2 class="section-title">cat about.txt</h2>
+    <h2 class="section-title">cat about.txt | head</h2>
     <p>
       <span class="hl">HOOPIUM</span> has one single mission: scanning Solana tokens for rug vibes
       before you ape. Trained on <span class="hl">thousands of hours of market data</span> from
-      the trenches. Paste a <span class="hl">contract address (CA)</span> in the terminal and it
-      checks DexScreener, the Solana chain, pump.fun and RugCheck.
+      the trenches. Paste a <span class="hl">contract address (CA)</span> in the terminal and get
+      hard data, red flags, a <span class="hl">0-100 HOOPIUM score</span>, a read on whether the
+      coin's narrative fits the <span class="hl">current market meta</span>, and an instant
+      verdict against <span class="hl">your own buy rules</span>. Zero financial advice — dyor, ser.
     </p>
-    <p>
-      The report covers <span class="hl">mint &amp; freeze authority, top-10 holder concentration,
-      liquidity vs market cap, volume, bonding curve status</span> and how similar-named tokens
-      performed, plus a <span class="hl">0-100 HOOPIUM score</span> computed with plain heuristics.
-      It also reads the <span class="hl">current market meta</span> from what's trending on
-      pump.fun right now and judges whether the coin's <span class="hl">lore / narrative</span>
-      fits it — because in the trenches, timing the meta is half the trade.
-      And you can set <span class="hl">your own buy rules</span> (market cap, holders, whatever
-      threshold you want) — every scan checks them and gives you an instant
-      WOULD BUY / WOULD NOT BUY verdict by your own criteria.
-    </p>
-    <p>
-      What it does <span class="hl">not</span> do: financial advice, price predictions,
-      trading signals. The gut take at the end is an automated opinion — always dyor, ser.
-    </p>
+    <p><a class="read-more" href="/about">&gt; read more</a></p>
   </section>
 
   <section id="features">
-    <h2 class="section-title">ls -la specs/</h2>
+    <h2 class="section-title">ls specs/</h2>
     <div class="features">
       <div class="card">
         <h3>on-chain checks</h3>
-        <p>Mint &amp; freeze authority status and top-10 holder concentration, straight from the public Solana RPC. No paid APIs.</p>
+        <p>Mint &amp; freeze authority and top-10 holder concentration, straight from the chain.</p>
       </div>
       <div class="card">
         <h3>market sanity</h3>
-        <p>Liquidity vs market cap, 24h volume, pair age and pump.fun bonding curve status. Dead token? Easy rug? It'll say so.</p>
+        <p>Liquidity vs mcap, 24h volume, pair age and bonding curve status. Dead token? Easy rug? It'll say so.</p>
       </div>
       <div class="card">
         <h3>cross-referenced</h3>
-        <p>RugCheck's score plus 3-5 similar-named tokens from DexScreener, so you see how clones of this play usually end.</p>
+        <p>An independent risk score plus 3-5 similar-named tokens, so you see how the clones ended.</p>
       </div>
       <div class="card">
         <h3>meta radar</h3>
-        <p>Reads what's trending on pump.fun right now and judges whether this coin's lore/narrative fits the current meta.</p>
+        <p>Reads what's trending on pump.fun right now and judges if this coin's lore fits the meta.</p>
       </div>
       <div class="card">
         <h3>chrome extension</h3>
-        <p>A mini HOOPIUM terminal in your toolbar: copy a CA on your trading platform, click, scan. Or select it → right click → scan. <a href="#extension">install it here</a>.</p>
+        <p>A mini scanner in your toolbar — copy a CA on your trading platform, click, scan. <a href="#extension">install it here</a>.</p>
       </div>
       <div class="card">
         <h3>0% financial advice</h3>
-        <p>The report ends with an automated gut take, clearly labeled as heuristics — never a buy signal. NFA by design, dyor ser.</p>
+        <p>The gut take is heuristics with personality, never a buy signal. NFA by design, dyor ser.</p>
       </div>
     </div>
+    <p class="specs-more"><a class="read-more" href="/specs">&gt; full specs (thresholds, score table, rules engine)</a></p>
   </section>
 
   <section id="chat-section">
