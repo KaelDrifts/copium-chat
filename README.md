@@ -71,4 +71,19 @@ and to RugCheck's data for authorities/holders). If you have your own RPC endpoi
 SOLANA_RPC_URL=https://your-rpc-endpoint
 ```
 
+## 5. Browser extension (scan without leaving your trading platform)
+
+There's a Chrome extension in `extension/` with a mini terminal popup, so you can copy a CA
+on Axiom/Photon/DexScreener/whatever and scan it without switching tabs:
+
+1. Make sure the server is running (`python app.py`).
+2. Open `chrome://extensions`, enable **Developer mode** (top right).
+3. Click **Load unpacked** and pick the `extension/` folder.
+4. Pin COPIUM to the toolbar. Click it, paste a CA, hit **scan**.
+
+Bonus: select a CA on any page → right click → **Scan "…" with COPIUM** and the popup
+opens with the report already loading. The extension talks to your local server on
+`localhost:5001` (endpoint `/api/scan`, no wallet needed) — nothing leaves your machine
+except the calls to the free data APIs.
+
 > Note: port 5001 is used because on macOS port 5000 is usually taken by AirPlay Receiver.

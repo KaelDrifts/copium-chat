@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green: #33ff33;
+      --green-dim: #1a9c1a;
+      --amber: #ffbf00;
+      --amber-dim: #ff9900;
+      --red: #ff4444;
+      --bg: #000;
+    }
+
+    body {
+      width: 420px;
+      background: var(--bg);
+      color: var(--green);
+      font-family: "Courier New", Courier, monospace;
+    }
+
+    /* CRT scanlines overlay */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15) 0px,
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      z-index: 999;
+    }
+
+    .titlebar {
+      border-bottom: 1px solid var(--green);
+      padding: 8px 12px;
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 6px var(--green);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .titlebar .dots { color: var(--green-dim); }
+
+    #chat {
+      height: 420px;
+      overflow-y: auto;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .msg { margin-bottom: 10px; white-space: pre-wrap; word-wrap: break-word; }
+    .msg .tag { font-weight: bold; }
+    .msg.user { color: var(--green); }
+    .msg.user .tag { color: #00cc00; }
+    .msg.bot { color: var(--amber); }
+    .msg.bot .tag { color: var(--amber-dim); }
+    .msg.error { color: var(--red); }
+    .msg.error .tag { color: #ff0000; }
+
+    .inputbar { display: flex; border-top: 1px solid var(--green); }
+    .inputbar .prompt-char { padding: 9px 0 9px 10px; font-size: 13px; }
+
+    #input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--green);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 9px 8px;
+      caret-color: var(--green);
+    }
+
+    #send {
+      background: transparent;
+      border: none;
+      border-left: 1px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 9px 14px;
+      cursor: pointer;
+    }
+
+    #send:hover { background: var(--green); color: #000; }
+    #send:disabled { opacity: 0.4; cursor: wait; }
+
+    #chat::-webkit-scrollbar { width: 8px; }
+    #chat::-webkit-scrollbar-thumb { background: var(--green-dim); }
+    #chat::-webkit-scrollbar-track { background: #0a0a0a; }
+
+    .footer {
+      border-top: 1px solid var(--green-dim);
+      padding: 6px 10px;
+      font-size: 10px;
+      color: var(--green-dim);
+      text-align: center;
+    }
+
+    .footer .nfa { color: var(--red); }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <span>COPIUM v2.0 — scanner</span>
+    <span class="dots">[●●●]</span>
+  </div>
+  <div id="chat">
+    <div class="msg bot"><span class="tag">[COPIUM]</span> gm ser. paste a solana token CA and I'll scan it for rug vibes. (needs the COPIUM server running on localhost:5001)</div>
+  </div>
+  <div class="inputbar">
+    <span class="prompt-char">&gt;</span>
+    <input id="input" type="text" autocomplete="off" placeholder="paste a solana token CA, ser..." />
+    <button id="send">scan</button>
+  </div>
+  <div class="footer"><span class="nfa">⚠ NOT FINANCIAL ADVICE.</span> automated heuristics only. dyor, ser.</div>
+  <script src="popup.js"></script>
+</body>
+</html>

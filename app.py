@@ -565,19 +565,8 @@ def get_session_pubkey():
     return SESSIONS.get(token)
 
 
-@app.route("/api/chat", methods=["POST"])
-def chat():
-    if not get_session_pubkey():
-        return (
-            jsonify({"error": "Wallet not connected. Connect your Phantom wallet first, ser."}),
-            401,
-        )
-
-    data = request.get_json(silent=True) or {}
-    message = (data.get("message") or "").strip()
-    if not message:
-        return jsonify({"error": "Send a JSON body with a 'message' field."}), 400
-
+def run_scan(message):
+    """Scan logic shared by /api/chat (web, wallet-gated) and /api/scan (browser extension)."""
     ca = extract_solana_ca(message)
     if not ca:
         return jsonify(
@@ -633,6 +622,47 @@ def chat():
                 f"({e}), so here's the raw scan instead:\n\n{analysis_text}"
             }
         )
+
+
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    if not get_session_pubkey():
+        return (
+            jsonify({"error": "Wallet not connected. Connect your Phantom wallet first, ser."}),
+            401,
+        )
+
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"error": "Send a JSON body with a 'message' field."}), 400
+
+    return run_scan(message)
+
+
+@app.route("/api/scan", methods=["POST", "OPTIONS"])
+def scan():
+    """Wallet-free endpoint for the browser extension (local use)."""
+    if request.method == "OPTIONS":
+        return _cors(app.make_response(("", 204)))
+
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return _cors(jsonify({"error": "Send a JSON body with a 'message' field."})), 400
+
+    response = run_scan(message)
+    # run_scan may return (response, status) or just a response
+    if isinstance(response, tuple):
+        return _cors(response[0]), response[1]
+    return _cors(response)
+
+
+def _cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    return response
 
 
 if __name__ == "__main__":
