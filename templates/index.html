@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>COPIUM — your hopium dealer in the bear market</title>
-  <meta name="description" content="COPIUM: the degen AI of crypto twitter. Memes, CT slang and zero financial advice." />
+  <title>COPIUM — solana token risk scanner</title>
+  <meta name="description" content="COPIUM: paste a Solana contract address and get an automated rug-risk report. Free APIs, terminal vibes, zero financial advice." />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -285,11 +285,12 @@
  ╚██████╗╚██████╔╝██║     ██║╚██████╔╝██║ ╚═╝ ██║
   ╚═════╝ ╚═════╝ ╚═╝     ╚═╝ ╚═════╝ ╚═╝     ╚═╝</pre>
     <h1>COPIUM</h1>
-    <p class="tagline">your hopium dealer in the bear market</p>
+    <p class="tagline">solana token risk scanner — paste a CA, get the truth</p>
     <p class="sub">
-      The most degen AI on crypto twitter. Speaks your language (and CT's),
-      fluent in memes, copium and diamond hands.
-      It won't tell you what to buy — it'll keep you company while you cope.
+      Drop any Solana contract address into the terminal and COPIUM pulls
+      on-chain data, liquidity, holders, pump.fun status and RugCheck,
+      runs the red-flag heuristics and writes you a risk report with a score.
+      It won't tell you what to buy — it'll tell you what smells like a rug.
     </p>
     <a class="btn" href="#chat-section">&gt; launch terminal<span class="blink">_</span></a>
   </header>
@@ -297,17 +298,18 @@
   <section id="about" class="about">
     <h2 class="section-title">cat about.txt</h2>
     <p>
-      <span class="hl">COPIUM</span> is a chatbot with one single mission: keeping the vibes high
-      when the market is bleeding. Born in the trenches of crypto twitter,
-      raised on memes, doomposting threads and unanswered "wen moon"s.
+      <span class="hl">COPIUM</span> has one single mission: scanning Solana tokens for rug vibes
+      before you ape. Paste a <span class="hl">contract address (CA)</span> in the terminal and it
+      checks DexScreener, the Solana chain, pump.fun and RugCheck — all free APIs.
     </p>
     <p>
-      Speaks native CT slang — <span class="hl">gm, wagmi, ngmi, ser, fren, based, rug, ape</span> —
-      and replies in whatever language you write in. It's fast, it's free, it's yours.
+      The report covers <span class="hl">mint &amp; freeze authority, top-10 holder concentration,
+      liquidity vs market cap, volume, bonding curve status</span> and how similar-named tokens
+      performed, plus a LOW / MEDIUM / HIGH risk score computed with plain heuristics.
     </p>
     <p>
       What it does <span class="hl">not</span> do: financial advice, price predictions,
-      trading signals. The rest of CT already does that (and look how that's going).
+      trading signals. The gut take at the end is an automated opinion — always dyor, ser.
     </p>
   </section>
 
@@ -315,20 +317,20 @@
     <h2 class="section-title">ls -la specs/</h2>
     <div class="features">
       <div class="card">
-        <h3>100% degen certified</h3>
-        <p>Trained on crypto twitter culture. Fluent in copium, hopium and every other substance the market runs on.</p>
+        <h3>on-chain checks</h3>
+        <p>Mint &amp; freeze authority status and top-10 holder concentration, straight from the public Solana RPC. No paid APIs.</p>
+      </div>
+      <div class="card">
+        <h3>market sanity</h3>
+        <p>Liquidity vs market cap, 24h volume, pair age and pump.fun bonding curve status. Dead token? Easy rug? It'll say so.</p>
+      </div>
+      <div class="card">
+        <h3>cross-referenced</h3>
+        <p>RugCheck's score plus 3-5 similar-named tokens from DexScreener, so you see how clones of this play usually end.</p>
       </div>
       <div class="card">
         <h3>0% financial advice</h3>
-        <p>Will never tell you what to buy or when to sell. NFA by design, always dyor, ser.</p>
-      </div>
-      <div class="card">
-        <h3>natural polyglot</h3>
-        <p>Write in English, Spanish or whatever language you want. It replies in yours (with a CT accent).</p>
-      </div>
-      <div class="card">
-        <h3>open source & free</h3>
-        <p>Flask + Groq + vanilla JS. Runs free, locally, no trackers. Sign-in is a wallet message signature — never a transaction, never gas.</p>
+        <p>The report ends with an automated gut take, clearly labeled as heuristics — never a buy signal. NFA by design, dyor ser.</p>
       </div>
     </div>
   </section>
@@ -337,11 +339,11 @@
     <h2 class="section-title">./copium --interactive</h2>
     <div class="terminal">
       <div class="titlebar">
-        <span>COPIUM v1.0 — crypto twitter terminal</span>
+        <span>COPIUM v2.0 — solana token scanner</span>
         <span class="dots">[●●●]</span>
       </div>
       <div id="chat">
-        <div class="msg bot"><span class="tag">[COPIUM]</span> gm ser. connect your wallet to unlock the terminal (just a signature, no transaction, no gas)</div>
+        <div class="msg bot"><span class="tag">[COPIUM]</span> gm ser. connect your wallet to unlock the scanner (just a signature, no transaction, no gas). then paste any solana token CA and I'll check it for rug vibes.</div>
       </div>
       <div class="inputbar">
         <span class="prompt-char">&gt;</span>
@@ -352,9 +354,9 @@
   </section>
 
   <footer>
-    <p><span class="nfa">⚠ NOT FINANCIAL ADVICE.</span> COPIUM is entertainment and memes, nothing else.</p>
-    <p>No trades executed, no live market data, no price predictions. dyor, ser.</p>
-    <p>COPIUM © 2026 — built with flask, groq and pure copium</p>
+    <p><span class="nfa">⚠ NOT FINANCIAL ADVICE.</span> COPIUM's reports and gut takes are automated heuristics, nothing else.</p>
+    <p>No trades executed, no price predictions. Data from free public APIs, may be wrong or stale. dyor, ser.</p>
+    <p>COPIUM © 2026 — built with flask, groq, dexscreener, rugcheck and pure copium</p>
   </footer>
 
   <script>
@@ -380,7 +382,7 @@
       walletBtn.textContent = walletPubkey.slice(0, 4) + "..." + walletPubkey.slice(-4);
       input.disabled = false;
       sendBtn.disabled = false;
-      input.placeholder = "type here, anon...";
+      input.placeholder = "paste a solana token CA, ser...";
       input.focus();
     }
 
@@ -432,7 +434,7 @@
         sessionStorage.setItem("copium_token", authToken);
         sessionStorage.setItem("copium_pubkey", walletPubkey);
         setConnectedUI();
-        addMessage("bot", "wallet verified, ser. wagmi. ask me anything, fren (not financial advice, obviously)");
+        addMessage("bot", "wallet verified, ser. wagmi. paste a solana token CA and I'll scan it for rug vibes (takes a few seconds — hitting 4 free APIs). not financial advice, obviously.");
       } catch (err) {
         addMessage("error", err.message || "wallet connection rejected, ngmi");
       } finally {

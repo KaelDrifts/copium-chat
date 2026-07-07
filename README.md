@@ -1,8 +1,24 @@
-# COPIUM 🐸 — crypto twitter chat terminal
+# COPIUM 🐸 — solana token risk scanner
 
-Terminal-styled chat assistant that talks like a crypto twitter degen. Flask + Groq backend (free), vanilla HTML/JS frontend.
+Terminal-styled scanner: paste a Solana token **contract address (CA)** in the chat and COPIUM
+returns an automated risk report. Flask backend + Groq (free) for the write-up, vanilla HTML/JS frontend.
 
-> COPIUM does not give financial advice, does not predict prices and does not execute trades. Vibes only.
+> COPIUM does not give financial advice, does not predict prices and does not execute trades.
+> The "gut take" at the end of each report is an automated opinion based on simple heuristics.
+
+## What it checks (all free APIs, no keys needed)
+
+| Source | What it pulls |
+|---|---|
+| [DexScreener](https://docs.dexscreener.com/) | price, liquidity, 24h volume, market cap, pair age + 3-5 similar-named tokens as comparables |
+| Solana public RPC | mint & freeze authority (renounced or not), top-10 holder concentration |
+| [pump.fun](https://pump.fun) | bonding curve progress / migrated to Raydium |
+| [RugCheck](https://rugcheck.xyz) | independent risk score to cross-reference |
+
+Red flags are computed with plain if/else heuristics (active authorities, concentrated holders,
+thin liquidity vs mcap, dead volume) into a **LOW / MEDIUM / HIGH** score, and the pre-computed
+result is handed to the LLM only to write it up as a readable report. If Groq is down or
+rate-limited, the raw scan is returned instead.
 
 ## 1. Get a free API key
 
@@ -29,11 +45,30 @@ Open [http://localhost:5001](http://localhost:5001) and that's it. gm.
 
 ## 3. Connect your wallet
 
-The chat is unlocked by signing in with a Solana wallet ([Phantom](https://phantom.app)):
+The scanner is unlocked by signing in with a Solana wallet ([Phantom](https://phantom.app)):
 
 1. Click **connect wallet** in the nav.
 2. Approve the connection and sign the login message in Phantom.
 
-The signature only proves you own the wallet — it never triggers a transaction and costs no gas. Sessions live in server memory, so restarting the server logs everyone out.
+The signature only proves you own the wallet — it never triggers a transaction and costs no gas.
+Sessions live in server memory, so restarting the server logs everyone out.
+
+## 4. Scan a token
+
+Paste any Solana token CA (base58, 32-44 chars) in the terminal, e.g. BONK:
+
+```
+DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+```
+
+Anything that isn't a valid CA gets a reminder to paste one. External API failures and rate
+limits are reported in the chat instead of breaking the request.
+
+The public Solana RPC rate-limits aggressively (the scanner falls back to a second public RPC,
+and to RugCheck's data for authorities/holders). If you have your own RPC endpoint, set it with:
+
+```
+SOLANA_RPC_URL=https://your-rpc-endpoint
+```
 
 > Note: port 5001 is used because on macOS port 5000 is usually taken by AirPlay Receiver.
