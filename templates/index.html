@@ -148,7 +148,37 @@
       box-shadow: 0 0 16px rgba(51, 255, 51, 0.25);
     }
 
-    .type-cursor { animation: blink 1s steps(1) infinite; }
+    .hero pre.ascii { transition: transform 0.12s ease-out; will-change: transform; }
+
+    .hero pre.ascii:hover {
+      animation: flicker 4s infinite, glitch 0.4s steps(2) infinite;
+    }
+
+    @keyframes glitch {
+      0% { text-shadow: 2px 0 rgba(255, 68, 68, 0.7), -2px 0 rgba(51, 153, 255, 0.7), 0 0 10px rgba(51, 255, 51, 0.6); }
+      50% { text-shadow: -2px 0 rgba(255, 68, 68, 0.7), 2px 0 rgba(51, 153, 255, 0.7), 0 0 10px rgba(51, 255, 51, 0.6); }
+      100% { text-shadow: 1px 0 rgba(255, 68, 68, 0.7), -1px 0 rgba(51, 153, 255, 0.7), 0 0 10px rgba(51, 255, 51, 0.6); }
+    }
+
+    .hero-status {
+      color: var(--green-dim);
+      font-size: 13px;
+      margin-bottom: 26px;
+      letter-spacing: 1px;
+    }
+
+    .hero-status .pulse-dot {
+      color: var(--green);
+      animation: pulse 1.6s ease-in-out infinite;
+      display: inline-block;
+    }
+
+    .hero-status .stat { color: var(--amber); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; text-shadow: 0 0 8px var(--green); }
+      50% { opacity: 0.35; text-shadow: none; }
+    }
 
     /* ---------- HERO ---------- */
     .hero {
@@ -469,6 +499,9 @@
  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝ ╚═════╝ ╚═╝     ╚═╝</pre>
     <h1>HOOPIUM</h1>
     <p class="tagline">solana token risk scanner — paste a CA, get the truth</p>
+    <p class="hero-status" id="hero-status" hidden>
+      <span class="pulse-dot">●</span> scanner online — <span class="stat" id="meta-count"></span> tokens live on the meta radar
+    </p>
     <p class="sub">
       Trained on thousands of hours in the trenches of the market.
       Drop any Solana contract address into the terminal and HOOPIUM pulls
@@ -885,25 +918,18 @@
     // ---------- interactive home: typewriter, scroll reveal, live meta ticker ----------
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // typewriter on the hero tagline
-    (function typewriter() {
-      const tag = document.querySelector(".hero .tagline");
-      if (!tag || reducedMotion) return;
-      const full = tag.textContent;
-      tag.textContent = "";
-      const cursor = document.createElement("span");
-      cursor.className = "type-cursor";
-      cursor.textContent = "_";
-      tag.appendChild(cursor);
-      let i = 0;
-      const t = setInterval(() => {
-        cursor.before(full[i]);
-        i += 1;
-        if (i >= full.length) {
-          clearInterval(t);
-          setTimeout(() => cursor.remove(), 4000);
-        }
-      }, 26);
+    // the ascii logo tilts slightly toward the mouse (3D, CRT style)
+    (function logoTilt() {
+      const logo = document.querySelector(".hero pre.ascii");
+      const hero = document.querySelector(".hero");
+      if (!logo || !hero || reducedMotion) return;
+      hero.addEventListener("mousemove", (e) => {
+        const r = logo.getBoundingClientRect();
+        const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
+        const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
+        logo.style.transform = `perspective(700px) rotateY(${dx * 7}deg) rotateX(${-dy * 6}deg)`;
+      });
+      hero.addEventListener("mouseleave", () => { logo.style.transform = ""; });
     })();
 
     // sections and cards fade in as you scroll
@@ -973,6 +999,8 @@
         buildRun();
         buildRun(); // duplicated content = seamless infinite loop
         document.getElementById("ticker-wrap").hidden = false;
+        document.getElementById("meta-count").textContent = trending.length;
+        document.getElementById("hero-status").hidden = false;
       } catch (e) {
         // no ticker if the server can't reach pump.fun — the rest of the page works fine
       }
