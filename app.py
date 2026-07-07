@@ -36,6 +36,7 @@ SOLANA_RPC_URLS = [
 DEXSCREENER_TOKEN_URL = "https://api.dexscreener.com/latest/dex/tokens/{}"
 DEXSCREENER_SEARCH_URL = "https://api.dexscreener.com/latest/dex/search"
 PUMPFUN_COIN_URL = "https://frontend-api-v3.pump.fun/coins/{}"
+PUMPFUN_LIVE_URL = "https://frontend-api-v3.pump.fun/coins/currently-live?offset=0&limit=20&includeNsfw=false"
 RUGCHECK_REPORT_URL = "https://api.rugcheck.xyz/v1/tokens/{}/report"
 
 HTTP_TIMEOUT = 10
@@ -59,13 +60,17 @@ Format the report with these sections, in this order, using plain text headers l
 1. HARD DATA — price, liquidity, 24h volume, market cap, pair age, authorities, top-10 holder %, bonding curve / migration status.
 2. RED FLAGS — every flag found, one per line, worst first. If none, say so.
 3. COMPARABLES — how similar-named tokens are doing, and what that suggests.
-4. YOUR RULES — ONLY if the analysis includes "USER'S OWN BUY RULES": restate each rule with
+4. META FIT — from the list of currently live/trending pump.fun tokens, describe in 1-2 lines
+   what the current market meta is (which themes/narratives are running right now), then judge
+   whether this token's lore/narrative fits that meta or not, and what that means for it.
+5. YOUR RULES — ONLY if the analysis includes "USER'S OWN BUY RULES": restate each rule with
    its PASS/FAIL/UNKNOWN result and the already-computed WOULD BUY / WOULD NOT BUY verdict.
    Never change that verdict. Skip this section entirely if no user rules are present.
-5. GUT TAKE — one short paragraph: would you personally ape in or not, and why. ALWAYS end this
-   section stating clearly that this is an automated opinion based on heuristics, NOT financial advice.
-6. COPIUM SCORE — the very LAST section: the 0-100 score (100 = cleanest) with the
-   LOW / MEDIUM / HIGH risk level and a one-line justification.
+6. GUT TAKE — one short paragraph: would you personally ape in or not, and why. Factor in the
+   meta fit. ALWAYS end this section stating clearly that this is an automated opinion based
+   on heuristics, NOT financial advice.
+7. COPIUM SCORE — the very LAST section. First line exactly in this format:
+   "<score>/100 — RISK: <LOW|MEDIUM|HIGH>", then one line of justification.
 
 Strict rules (never break them):
 - ONLY use the data given to you. NEVER invent numbers, holders, flags or comparables.
@@ -222,13 +227,43 @@ def fetch_pumpfun(ca):
             progress_pct = round(
                 max(0.0, min(100.0, (1 - real_reserves / PUMPFUN_INITIAL_REAL_TOKEN_RESERVES) * 100)), 1
             )
-        return {"is_pumpfun": True, "migrated_to_raydium": migrated, "bonding_curve_pct": progress_pct}, None
+        return {
+            "is_pumpfun": True,
+            "migrated_to_raydium": migrated,
+            "bonding_curve_pct": progress_pct,
+            "name": coin.get("name"),
+            "symbol": coin.get("symbol"),
+            "description": (coin.get("description") or "").strip()[:300] or None,
+        }, None
     except requests.HTTPError as e:
         if e.response is not None and e.response.status_code == 404:
             return None, None  # not a pump.fun token
         return None, f"pump.fun: {e}"
     except Exception as e:
         return None, f"pump.fun: {e}"
+
+
+def fetch_pumpfun_trending():
+    """Tokens live/trending on pump.fun right now — a snapshot of the current market meta."""
+    try:
+        coins = _get_json(PUMPFUN_LIVE_URL)
+        if not isinstance(coins, list):
+            return [], "pump.fun meta: unexpected response"
+        trending = []
+        for coin in coins[:20]:
+            if not isinstance(coin, dict) or not coin.get("name"):
+                continue
+            trending.append(
+                {
+                    "name": coin.get("name"),
+                    "symbol": coin.get("symbol"),
+                    "description": (coin.get("description") or "").strip()[:100] or None,
+                    "usd_market_cap": _to_float(coin.get("usd_market_cap")),
+                }
+            )
+        return trending, None
+    except Exception as e:
+        return [], f"pump.fun meta: {e}"
 
 
 def fetch_rugcheck(ca):
@@ -338,6 +373,16 @@ def build_risk_report(ca):
     if err:
         errors.append(err)
 
+    trending, err = fetch_pumpfun_trending()
+    if err:
+        errors.append(err)
+
+    narrative = {
+        "name": (pump or {}).get("name") or (dex or {}).get("name"),
+        "symbol": (pump or {}).get("symbol") or (dex or {}).get("symbol"),
+        "description": (pump or {}).get("description"),
+    }
+
     red_flags, warnings = [], []
 
     if rugcheck and rugcheck.get("rugged"):
@@ -407,6 +452,8 @@ def build_risk_report(ca):
         "red_flags": red_flags,
         "warnings": warnings,
         "comparables": similar,
+        "meta_trending": trending,
+        "narrative": narrative,
         "data_source_errors": errors,
     }
     report["copium_score"] = compute_copium_score(report)
@@ -730,6 +777,25 @@ def format_report_for_llm(report):
             )
     else:
         lines.append("- none found")
+
+    narrative = report.get("narrative") or {}
+    lines.append("")
+    lines.append("TOKEN LORE / NARRATIVE:")
+    lines.append(f"- Name/symbol: {narrative.get('name')} ({narrative.get('symbol')})")
+    if narrative.get("description"):
+        lines.append(f'- Description: "{narrative["description"]}"')
+    else:
+        lines.append("- No description available; judge the narrative from the name/symbol alone.")
+
+    lines.append("")
+    lines.append("CURRENT PUMP.FUN META (tokens live/trending right now):")
+    if report.get("meta_trending"):
+        for t in report["meta_trending"]:
+            desc = f' — "{t["description"]}"' if t.get("description") else ""
+            mcap = f" (mcap ${_fmt(t['usd_market_cap'])})" if t.get("usd_market_cap") else ""
+            lines.append(f"- {t.get('name')} ({t.get('symbol')}){mcap}{desc}")
+    else:
+        lines.append("- unavailable right now")
 
     return "\n".join(lines)
 

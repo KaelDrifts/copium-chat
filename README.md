@@ -12,13 +12,17 @@ returns an automated risk report. Flask backend + Groq (free) for the write-up, 
 |---|---|
 | [DexScreener](https://docs.dexscreener.com/) | price, liquidity, 24h volume, market cap, pair age + 3-5 similar-named tokens as comparables |
 | Solana public RPC | mint & freeze authority (renounced or not), top-10 holder concentration |
-| [pump.fun](https://pump.fun) | bonding curve progress / migrated to Raydium |
+| [pump.fun](https://pump.fun) | bonding curve progress / migrated to Raydium, the token's lore/description, and the currently trending tokens (the "meta") |
 | [RugCheck](https://rugcheck.xyz) | independent risk score to cross-reference |
 
 Red flags are computed with plain if/else heuristics (active authorities, concentrated holders,
 thin liquidity vs mcap, dead volume) into a **0-100 COPIUM score** (100 = cleanest) with a
 LOW / MEDIUM / HIGH risk level, and the pre-computed result is handed to the LLM only to write
 it up as a readable report. If Groq is down or rate-limited, the raw scan is returned instead.
+
+The report also includes a **META FIT** section: COPIUM pulls the tokens currently live/trending
+on pump.fun, summarizes what the market meta is right now, and judges whether the scanned coin's
+lore/narrative fits it.
 
 ## Your own buy rules
 
