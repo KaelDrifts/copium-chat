@@ -90,6 +90,66 @@
     #wallet-btn.connected:hover { background: var(--amber); color: #000; }
     #wallet-btn:disabled { opacity: 0.4; cursor: wait; }
 
+    /* ---------- LIVE META TICKER ---------- */
+    .ticker-wrap {
+      overflow: hidden;
+      border-bottom: 1px solid var(--green-dim);
+      background: #020502;
+    }
+
+    .ticker {
+      display: inline-flex;
+      white-space: nowrap;
+      padding: 7px 0;
+      animation: ticker-scroll 45s linear infinite;
+    }
+
+    .ticker-wrap:hover .ticker { animation-play-state: paused; }
+
+    @keyframes ticker-scroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    .ticker .tick-label {
+      color: var(--amber);
+      font-size: 12px;
+      margin: 0 18px 0 24px;
+      letter-spacing: 1px;
+    }
+
+    .tick {
+      background: transparent;
+      border: none;
+      color: var(--green);
+      font-family: inherit;
+      font-size: 12px;
+      margin-right: 28px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .tick:hover { color: var(--amber); text-shadow: 0 0 6px var(--amber); }
+    .tick .sym { color: var(--amber); }
+    .tick:hover .sym { color: var(--green); }
+    .tick .mcap { color: var(--green-dim); }
+
+    /* ---------- SCROLL REVEAL & HOVER ---------- */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
+      .reveal.visible { opacity: 1; transform: none; }
+    }
+
+    .card { transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--green);
+      box-shadow: 0 0 16px rgba(51, 255, 51, 0.25);
+    }
+
+    .type-cursor { animation: blink 1s steps(1) infinite; }
+
     /* ---------- HERO ---------- */
     .hero {
       min-height: 82vh;
@@ -394,6 +454,10 @@
       <button id="wallet-btn">connect wallet</button>
     </div>
   </nav>
+
+  <div class="ticker-wrap" id="ticker-wrap" hidden>
+    <div class="ticker" id="ticker"></div>
+  </div>
 
   <header class="hero">
     <pre class="ascii" aria-hidden="true">
@@ -817,6 +881,102 @@
     });
 
     renderRules();
+
+    // ---------- interactive home: typewriter, scroll reveal, live meta ticker ----------
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // typewriter on the hero tagline
+    (function typewriter() {
+      const tag = document.querySelector(".hero .tagline");
+      if (!tag || reducedMotion) return;
+      const full = tag.textContent;
+      tag.textContent = "";
+      const cursor = document.createElement("span");
+      cursor.className = "type-cursor";
+      cursor.textContent = "_";
+      tag.appendChild(cursor);
+      let i = 0;
+      const t = setInterval(() => {
+        cursor.before(full[i]);
+        i += 1;
+        if (i >= full.length) {
+          clearInterval(t);
+          setTimeout(() => cursor.remove(), 4000);
+        }
+      }, 26);
+    })();
+
+    // sections and cards fade in as you scroll
+    if (!reducedMotion && "IntersectionObserver" in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("visible");
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      document.querySelectorAll("section, .card, footer").forEach((el) => {
+        el.classList.add("reveal");
+        io.observe(el);
+      });
+    }
+
+    // live meta ticker: what's trending on pump.fun right now, click to scan
+    function fmtMcap(v) {
+      if (v == null) return "";
+      if (v >= 1e6) return "$" + (v / 1e6).toFixed(1) + "m";
+      if (v >= 1e3) return "$" + (v / 1e3).toFixed(1) + "k";
+      return "$" + Math.round(v);
+    }
+
+    function scanFromTicker(mint, name) {
+      document.getElementById("chat-section").scrollIntoView({ behavior: "smooth" });
+      if (!input.disabled) {
+        input.value = mint;
+        input.focus();
+      } else {
+        addMessage("error", `connect your wallet first, ser — then I'll scan ${name} for you.`);
+      }
+    }
+
+    (async function loadTicker() {
+      try {
+        const res = await fetch("/api/meta");
+        const data = await res.json();
+        const trending = (data.trending || []).filter((t) => t.mint && t.name);
+        if (!trending.length) return;
+        const ticker = document.getElementById("ticker");
+        const buildRun = () => {
+          const label = document.createElement("span");
+          label.className = "tick-label";
+          label.textContent = "[LIVE META — pump.fun right now, click to scan]";
+          ticker.appendChild(label);
+          trending.forEach((t) => {
+            const b = document.createElement("button");
+            b.className = "tick";
+            b.title = "scan " + t.name;
+            const sym = document.createElement("span");
+            sym.className = "sym";
+            sym.textContent = "$" + (t.symbol || "?").trim();
+            b.appendChild(document.createTextNode("▸ "));
+            b.appendChild(sym);
+            b.appendChild(document.createTextNode(" " + t.name + " "));
+            const mc = document.createElement("span");
+            mc.className = "mcap";
+            mc.textContent = fmtMcap(t.usd_market_cap);
+            b.appendChild(mc);
+            b.addEventListener("click", () => scanFromTicker(t.mint, t.name));
+            ticker.appendChild(b);
+          });
+        };
+        buildRun();
+        buildRun(); // duplicated content = seamless infinite loop
+        document.getElementById("ticker-wrap").hidden = false;
+      } catch (e) {
+        // no ticker if the server can't reach pump.fun — the rest of the page works fine
+      }
+    })();
   </script>
 </body>
 </html>

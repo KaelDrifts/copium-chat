@@ -257,6 +257,7 @@ def fetch_pumpfun_trending():
                 continue
             trending.append(
                 {
+                    "mint": coin.get("mint"),
                     "name": coin.get("name"),
                     "symbol": coin.get("symbol"),
                     "description": (coin.get("description") or "").strip()[:100] or None,
@@ -843,6 +844,21 @@ def download_extension():
         as_attachment=True,
         download_name="hoopium-extension.zip",
     )
+
+
+_META_CACHE = {"ts": 0.0, "data": []}
+META_CACHE_TTL_SECONDS = 60
+
+
+@app.route("/api/meta")
+def api_meta():
+    """Trending pump.fun tokens for the live ticker on the landing page (cached)."""
+    if not _META_CACHE["data"] or time.time() - _META_CACHE["ts"] > META_CACHE_TTL_SECONDS:
+        trending, _ = fetch_pumpfun_trending()
+        if trending:
+            _META_CACHE["data"] = trending
+            _META_CACHE["ts"] = time.time()
+    return jsonify({"trending": _META_CACHE["data"]})
 
 
 @app.route("/about")
