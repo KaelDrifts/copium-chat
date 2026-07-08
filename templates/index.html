@@ -567,7 +567,7 @@
         <span class="dots">[●●●]</span>
       </div>
       <div id="chat">
-        <div class="msg bot"><span class="tag">[HOOPIUM]</span> gm ser. connect your wallet to unlock the scanner (just a signature, no transaction, no gas). then paste any solana token CA and I'll check it for rug vibes.</div>
+        <div class="msg bot"><span class="tag">[HOOPIUM]</span> gm ser. connect your wallet to unlock the scanner (just a signature, no transaction, no gas). then paste any solana token CA and I'll check it for rug vibes — or drop an @username and I'll dig up that X account's history.</div>
       </div>
       <div class="inputbar">
         <span class="prompt-char">&gt;</span>
@@ -695,7 +695,7 @@
       walletBtn.textContent = walletPubkey.slice(0, 4) + "..." + walletPubkey.slice(-4);
       input.disabled = false;
       sendBtn.disabled = false;
-      input.placeholder = "paste a solana token CA, ser...";
+      input.placeholder = "paste a solana token CA or an @username, ser...";
       input.focus();
     }
 
@@ -747,7 +747,7 @@
         sessionStorage.setItem("hoopium_token", authToken);
         sessionStorage.setItem("hoopium_pubkey", walletPubkey);
         setConnectedUI();
-        addMessage("bot", "wallet verified, ser. wagmi. paste a solana token CA and I'll scan it for rug vibes (takes a few seconds). not financial advice, obviously.");
+        addMessage("bot", "wallet verified, ser. wagmi. paste a solana token CA and I'll scan it for rug vibes, or an @username to check that X account's history (takes a few seconds). not financial advice, obviously.");
       } catch (err) {
         addMessage("error", err.message || "wallet connection rejected, ngmi");
       } finally {

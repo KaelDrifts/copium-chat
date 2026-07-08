@@ -6,6 +6,7 @@ import re
 import secrets
 import time
 import zipfile
+from html import unescape
 
 import base58
 import requests
@@ -53,6 +54,14 @@ PUMPFUN_INITIAL_REAL_TOKEN_RESERVES = 793_100_000_000_000
 
 CA_CANDIDATE_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
+# X/Twitter handles: 1-15 chars, letters/digits/underscore, optional leading @
+X_USERNAME_RE = re.compile(r"^@?([A-Za-z0-9_]{1,15})$")
+
+WAYBACK_CDX_URL = "http://web.archive.org/cdx/search/cdx"
+WAYBACK_SNAPSHOT_URL = "https://web.archive.org/web/{timestamp}/https://twitter.com/{username}"
+# Wayback can be slow, especially the CDX index
+WAYBACK_TIMEOUT = 30
+
 SYSTEM_PROMPT = """You are HOOPIUM, a Solana token risk scanner with a crypto-twitter (CT) personality.
 
 You receive a PRE-COMPUTED risk analysis of a token (hard data, red flags, a risk score and
@@ -83,6 +92,33 @@ Strict rules (never break them):
 - Reply in English unless the analysis is clearly in another language.
 """
 
+X_HISTORY_SYSTEM_PROMPT = """You are HOOPIUM, a Solana-scene account history checker with a crypto-twitter (CT) personality.
+
+You receive a PRE-COMPUTED history check of an X/Twitter account, built from public Wayback
+Machine archives. Your only job is to write it up as a readable terminal-style report.
+
+Format the report with these sections, in this order, using plain text headers like "== ARCHIVE DATA ==":
+1. ARCHIVE DATA — number of snapshots found, oldest snapshot date (this is the CONFIRMED minimum
+   age of the account, the account may be older), newest snapshot date, and whatever was extracted
+   from the archives (display name, bio, tweet count).
+2. TWEET COUNT CHECK — the tweet count comparison, ONLY if the analysis contains one. Say which
+   source the current count came from (live profile or newest archived snapshot).
+3. FLAGS — every flag found, one per line. If none, say so.
+4. NOT CONFIRMED — everything the check explicitly could NOT verify. Never paper over gaps.
+5. GUT TAKE — one short paragraph on how much history this account can actually prove. If there is
+   no evidence of anything shady, say so plainly instead of inventing suspicion.
+
+Always end the whole report with this exact line, verbatim:
+"note: this is best-effort based on public Wayback Machine archives — X blocks direct scraping, so the data may be incomplete."
+
+Strict rules (never break them):
+- ONLY use the data given to you. NEVER invent dates, counts, bios or flags.
+- If the analysis says no snapshots were found, the report must say exactly that: nothing could be
+  confirmed either way. Do not treat absence of archives as evidence of a fresh or fake account.
+- Light CT slang is fine (ser, larp, ngmi) but stay factual and readable.
+- Reply in English unless the analysis is clearly in another language.
+"""
+
 
 def get_groq_client():
     api_key = os.environ.get("GROQ_API_KEY")
@@ -107,6 +143,12 @@ def extract_solana_ca(message):
         except ValueError:
             continue
     return None
+
+
+def extract_x_username(message):
+    """Return the X/Twitter handle when the whole message is one (with or without @)."""
+    match = X_USERNAME_RE.match(message.strip())
+    return match.group(1) if match else None
 
 
 # ---------------------------------------------------------------------------
@@ -332,6 +374,266 @@ def _to_float(value):
         return float(value) if value is not None else None
     except (TypeError, ValueError):
         return None
+
+
+# ---------------------------------------------------------------------------
+# X/Twitter account history via Wayback Machine (free, no X API)
+# ---------------------------------------------------------------------------
+
+
+def fetch_wayback_snapshots(username):
+    """All archived snapshots of the profile page from the Wayback CDX API, oldest first."""
+    last_error = None
+    for domain in ("twitter.com", "x.com"):
+        try:
+            resp = requests.get(
+                WAYBACK_CDX_URL,
+                params={
+                    "url": f"{domain}/{username}",
+                    "output": "json",
+                    "fl": "timestamp,statuscode",
+                    "collapse": "digest",
+                },
+                headers=HTTP_HEADERS,
+                timeout=WAYBACK_TIMEOUT,
+            )
+            resp.raise_for_status()
+            rows = resp.json()
+            snapshots = [
+                {"timestamp": row[0], "statuscode": row[1]}
+                for row in (rows[1:] if isinstance(rows, list) else [])  # row 0 is the header
+                if isinstance(row, list) and len(row) >= 2 and str(row[0]).isdigit()
+            ]
+            if snapshots:
+                snapshots.sort(key=lambda s: s["timestamp"])
+                return snapshots, None
+        except Exception as e:
+            last_error = e
+    return [], f"Wayback CDX: {last_error}" if last_error else None
+
+
+def _wayback_date(timestamp):
+    """'20190403121530' -> '2019-04-03'."""
+    return f"{timestamp[0:4]}-{timestamp[4:6]}-{timestamp[6:8]}"
+
+
+def parse_twitter_profile_html(html):
+    """Best-effort regex extraction from a (possibly archived) Twitter/X profile page.
+
+    Archived markup varies wildly across the years, so every field is optional and
+    any parsing failure just leaves it as None.
+    """
+    profile = {"display_name": None, "bio": None, "tweet_count": None}
+    try:
+        match = (
+            # embedded JSON, sometimes HTML-escaped inside a data attribute
+            re.search(r'(?:"|&quot;)statuses_count(?:"|&quot;)\s*:\s*(\d+)', html)
+            # 2013-2019 era profile nav: title="16,654 Tweets"
+            or re.search(r'title="([\d,]+)\s+Tweets?"', html)
+            or re.search(r'ProfileNav-item--tweets[\s\S]{0,500}?data-count="(\d+)"', html)
+            or re.search(r'data-nav="tweets"[\s\S]{0,500}?data-count="(\d+)"', html)
+        )
+        if match:
+            profile["tweet_count"] = int(match.group(1).replace(",", ""))
+
+        match = re.search(r"<title>([^<]+)</title>", html, re.I)
+        if match:
+            title = unescape(match.group(1)).strip()
+            title = re.split(r"\s*[|/·]\s*(?:Twitter|X)\s*$", title)[0]
+            title = re.sub(r"\s+on\s+(?:Twitter|X)\s*$", "", title, flags=re.I)
+            profile["display_name"] = title.strip()[:100] or None
+
+        match = re.search(
+            r'<meta\s+(?:name|property)=["\'](?:description|og:description)["\']\s+content=["\']([^"\']*)["\']',
+            html,
+            re.I,
+        )
+        if match:
+            profile["bio"] = unescape(match.group(1)).strip()[:300] or None
+    except Exception:
+        pass
+    return profile
+
+
+def fetch_wayback_profile(timestamp, username):
+    """Fetch one archived snapshot of the profile and extract what we can from it."""
+    try:
+        resp = requests.get(
+            WAYBACK_SNAPSHOT_URL.format(timestamp=timestamp, username=username),
+            headers={"User-Agent": HTTP_HEADERS["User-Agent"]},
+            timeout=WAYBACK_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return parse_twitter_profile_html(resp.text), None
+    except Exception as e:
+        return None, f"Wayback snapshot {_wayback_date(timestamp)}: {e}"
+
+
+def fetch_live_x_profile(username):
+    """Try the live profile page. X usually blocks anonymous requests (login wall / JS),
+    so any failure just means 'unavailable', never an invented value."""
+    for url in (f"https://x.com/{username}", f"https://twitter.com/{username}"):
+        try:
+            resp = requests.get(
+                url,
+                headers={
+                    "User-Agent": HTTP_HEADERS["User-Agent"],
+                    "Accept": "text/html,application/xhtml+xml",
+                },
+                timeout=HTTP_TIMEOUT,
+            )
+            if resp.status_code != 200:
+                continue
+            profile = parse_twitter_profile_html(resp.text)
+            if any(profile.values()):
+                return profile, None
+        except Exception:
+            continue
+    return None, "live profile blocked or unavailable (X login wall / JS rendering)"
+
+
+def check_twitter_history(username):
+    """History check for an X account using only free public sources (Wayback Machine).
+
+    Everything is best-effort: fields the check could not confirm stay None and are
+    listed in 'unconfirmed' instead of being guessed.
+    """
+    errors = []
+    snapshots, err = fetch_wayback_snapshots(username)
+    if err:
+        errors.append(err)
+
+    result = {
+        "username": username,
+        "snapshot_count": len(snapshots),
+        "oldest_snapshot_date": None,
+        "newest_snapshot_date": None,
+        "oldest_profile": None,
+        "newest_profile": None,
+        "live_profile": None,
+        "live_error": None,
+        "comparison": None,
+        "flags": [],
+        "unconfirmed": [],
+        "data_source_errors": errors,
+    }
+
+    if snapshots:
+        # Prefer snapshots that archived an actual page (2xx), fall back to whatever exists
+        good = [s for s in snapshots if str(s["statuscode"]).startswith("2")] or snapshots
+        oldest, newest = good[0], good[-1]
+        result["oldest_snapshot_date"] = _wayback_date(oldest["timestamp"])
+        result["newest_snapshot_date"] = _wayback_date(newest["timestamp"])
+
+        result["oldest_profile"], err = fetch_wayback_profile(oldest["timestamp"], username)
+        if err:
+            errors.append(err)
+        if newest["timestamp"] != oldest["timestamp"]:
+            result["newest_profile"], err = fetch_wayback_profile(newest["timestamp"], username)
+            if err:
+                errors.append(err)
+    else:
+        result["unconfirmed"].append(
+            "account age: no Wayback Machine snapshots exist for this profile, so nothing "
+            "could be confirmed either way (many real accounts are simply never archived)"
+        )
+
+    result["live_profile"], result["live_error"] = fetch_live_x_profile(username)
+
+    old_count = (result["oldest_profile"] or {}).get("tweet_count")
+    current_count = (result["live_profile"] or {}).get("tweet_count")
+    current_source = "live profile"
+    if current_count is None:
+        current_count = (result["newest_profile"] or {}).get("tweet_count")
+        current_source = f"newest archived snapshot ({result['newest_snapshot_date']})"
+
+    if old_count is not None and current_count is not None:
+        result["comparison"] = {
+            "old_tweet_count": old_count,
+            "old_date": result["oldest_snapshot_date"],
+            "current_tweet_count": current_count,
+            "current_source": current_source,
+        }
+        # "Notably lower" = lost at least 30% AND at least 100 tweets, to avoid
+        # flagging parsing noise or a handful of deleted posts
+        if current_count < old_count * 0.7 and old_count - current_count >= 100:
+            result["flags"].append(
+                f"possible mass tweet deletion: {old_count:,} tweets archived on "
+                f"{result['oldest_snapshot_date']} vs {current_count:,} now ({current_source})"
+            )
+    else:
+        result["unconfirmed"].append(
+            "tweet count comparison: could not extract a tweet count from "
+            + ("the archived snapshots" if old_count is None else "the current profile")
+        )
+
+    if result["live_profile"] is None:
+        result["unconfirmed"].append(f"current live profile: {result['live_error']}")
+
+    return result
+
+
+def format_twitter_report_for_llm(result):
+    lines = [f"X/TWITTER ACCOUNT HISTORY CHECK for @{result['username']}", ""]
+
+    lines.append("ARCHIVE DATA (Wayback Machine):")
+    if result["snapshot_count"]:
+        lines.append(f"- Snapshots found: {result['snapshot_count']}")
+        lines.append(
+            f"- Oldest snapshot: {result['oldest_snapshot_date']} "
+            "(confirmed minimum account age — the account may be older)"
+        )
+        lines.append(f"- Newest snapshot: {result['newest_snapshot_date']}")
+        for label, profile in (
+            (f"Oldest snapshot ({result['oldest_snapshot_date']})", result["oldest_profile"]),
+            (f"Newest snapshot ({result['newest_snapshot_date']})", result["newest_profile"]),
+        ):
+            if not profile:
+                continue
+            lines.append(f"- {label}:")
+            lines.append(f"  - Display name: {_fmt(profile.get('display_name'))}")
+            lines.append(f"  - Bio: {_fmt(profile.get('bio'))}")
+            lines.append(f"  - Tweet count: {_fmt(profile.get('tweet_count'))}")
+    else:
+        lines.append("- NO snapshots found. Nothing about this account's past could be confirmed.")
+
+    lines.append("")
+    lines.append("CURRENT LIVE PROFILE:")
+    if result["live_profile"]:
+        live = result["live_profile"]
+        lines.append(f"- Display name: {_fmt(live.get('display_name'))}")
+        lines.append(f"- Bio: {_fmt(live.get('bio'))}")
+        lines.append(f"- Tweet count: {_fmt(live.get('tweet_count'))}")
+    else:
+        lines.append(f"- unavailable ({result['live_error']})")
+
+    if result["comparison"]:
+        c = result["comparison"]
+        lines.append("")
+        lines.append("TWEET COUNT COMPARISON:")
+        lines.append(f"- {c['old_date']} (oldest archive): {c['old_tweet_count']:,} tweets")
+        lines.append(f"- current ({c['current_source']}): {c['current_tweet_count']:,} tweets")
+
+    lines.append("")
+    lines.append("FLAGS:")
+    if result["flags"]:
+        lines.extend(f"- {f}" for f in result["flags"])
+    else:
+        lines.append("- none (no evidence of anything shady in the available data)")
+
+    lines.append("")
+    lines.append("NOT CONFIRMED:")
+    if result["unconfirmed"]:
+        lines.extend(f"- {u}" for u in result["unconfirmed"])
+    else:
+        lines.append("- none")
+
+    lines.append("")
+    lines.append(
+        "note: this is best-effort based on public Wayback Machine archives — "
+        "X blocks direct scraping, so the data may be incomplete."
+    )
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -929,14 +1231,19 @@ def get_session_pubkey():
 
 
 def run_scan(message, rules=None):
-    """Scan logic shared by /api/chat (web, wallet-gated) and /api/scan (browser extension)."""
+    """Scan logic shared by /api/chat (web, wallet-gated) and /api/scan (browser extension).
+
+    Input routing: a valid Solana CA runs the token risk scan; a lone @username (or bare
+    username-shaped string) runs the X account history check.
+    """
     ca = extract_solana_ca(message)
-    if not ca:
+    username = None if ca else extract_x_username(message)
+    if not ca and not username:
         return jsonify(
             {
-                "reply": "that doesn't look like a Solana contract address, ser. "
+                "reply": "that doesn't look like a Solana contract address or an X handle, ser. "
                 "paste a token CA (base58, 32-44 chars, e.g. from dexscreener or pump.fun) "
-                "and I'll scan it for rug vibes."
+                "to scan it for rug vibes, or an @username to check that account's history."
             }
         )
 
@@ -951,6 +1258,9 @@ def run_scan(message, rules=None):
             ),
             500,
         )
+
+    if username:
+        return run_twitter_scan(username)
 
     report, errors = build_risk_report(ca)
     if report is None:
@@ -976,13 +1286,23 @@ def run_scan(message, rules=None):
         "risk_level": report["risk_score"],
         "user_rules": rules_eval,
     }
+    return llm_reply(SYSTEM_PROMPT, analysis_text, extra)
 
+
+def run_twitter_scan(username):
+    result = check_twitter_history(username)
+    analysis_text = format_twitter_report_for_llm(result)
+    return llm_reply(X_HISTORY_SYSTEM_PROMPT, analysis_text, {"scan_type": "x_history"})
+
+
+def llm_reply(system_prompt, analysis_text, extra):
+    """Have the LLM write up a pre-computed analysis; fall back to the raw text if it's down."""
     try:
         client = get_groq_client()
         completion = client.chat.completions.create(
             model=MODEL,
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": analysis_text},
             ],
             temperature=0.4,
