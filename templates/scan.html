@@ -146,7 +146,6 @@
         {% if is_ca %}
         <div class="badge-row" id="badge-row" hidden>
           <img id="badge-img" alt="HOOPIUM score badge" />
-          embeddable badge: <a id="badge-link" href="#" target="_blank" rel="noopener"></a>
         </div>
         {% endif %}
         {% else %}
@@ -196,11 +195,7 @@
         });
 
         if (isCa && typeof data.hoopium_score === "number") {
-          const badgeUrl = location.origin + "/badge/" + query + ".svg";
-          document.getElementById("badge-img").src = badgeUrl;
-          const badgeLink = document.getElementById("badge-link");
-          badgeLink.href = badgeUrl;
-          badgeLink.textContent = badgeUrl;
+          document.getElementById("badge-img").src = "/badge/" + query + ".svg";
           document.getElementById("badge-row").hidden = false;
         }
       } catch (err) {
