@@ -185,6 +185,25 @@
       in a dead meta is still a bad trade; timing the meta is half the game.
     </p>
 
+    <h2>x account history</h2>
+    <p>
+      Drop an <span class="hl">@username</span> (or a bare handle) in the terminal instead of a CA
+      and HOOPIUM checks the account's history against the
+      <span class="hl">Wayback Machine's public archives</span> — no X API, no paid data:
+    </p>
+    <ul>
+      <li><span class="hl">confirmed minimum age</span> — the oldest archived snapshot of the profile. The account can only be older than that, never younger.</li>
+      <li><span class="hl">tweet count, then vs now</span> — extracted from archived profile pages where the markup allows it, compared against the current live profile (or the newest snapshot when X blocks the live page)</li>
+      <li><span class="hl">possible mass tweet deletion</span> — flagged only when the current count dropped more than 30% AND by at least 100 tweets vs an old snapshot; small deletions and parsing noise never trigger it</li>
+      <li><span class="hl">archived identity</span> — display name and bio from the oldest and newest snapshots, so you can see if the account was rebranded</li>
+    </ul>
+    <p>
+      Everything the check could <span class="hl">not</span> verify is listed in a NOT CONFIRMED
+      section instead of being guessed — no snapshots means "nothing confirmed either way",
+      not "fresh account". This is best-effort by nature: X blocks direct scraping and archived
+      HTML varies wildly across the years, so the data may be incomplete, and every report says so.
+    </p>
+
     <h2>your buy rules</h2>
     <p>
       Define your own thresholds over any scanned metric and get an instant

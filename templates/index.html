@@ -498,7 +498,7 @@
  ██║  ██║╚██████╔╝╚██████╔╝██║     ██║╚██████╔╝██║ ╚═╝ ██║
  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝ ╚═════╝ ╚═╝     ╚═╝</pre>
     <h1>HOOPIUM</h1>
-    <p class="tagline">solana token risk scanner — paste a CA, get the truth</p>
+    <p class="tagline">solana token risk scanner — paste a CA or an @username, get the truth</p>
     <p class="hero-status" id="hero-status" hidden>
       <span class="pulse-dot">●</span> scanner online — <span class="stat" id="meta-count"></span> tokens live on the meta radar
     </p>
@@ -507,6 +507,8 @@
       Drop any Solana contract address into the terminal and HOOPIUM pulls
       on-chain data, liquidity, holders, pump.fun status and RugCheck,
       runs the red-flag heuristics and writes you a risk report with a score.
+      Drop an <span class="hl">@username</span> instead and it digs through
+      Wayback Machine archives to check how much history that X account can actually prove.
     </p>
     <div class="hero-ctas">
       <a class="btn" href="#chat-section">&gt; launch terminal<span class="blink">_</span></a>
@@ -546,6 +548,10 @@
       <div class="card">
         <h3>meta radar</h3>
         <p>Reads what's trending on pump.fun right now and judges if this coin's lore fits the meta.</p>
+      </div>
+      <div class="card">
+        <h3>x account history</h3>
+        <p>Drop an @username and HOOPIUM checks Wayback Machine archives: confirmed minimum account age, tweet count then vs now, and a flag if a mass deletion shows up.</p>
       </div>
       <div class="card">
         <h3>chrome extension</h3>
