@@ -116,7 +116,7 @@
 
     <h2>how a scan works</h2>
     <ol>
-      <li>you paste a CA (base58, 32-44 chars) — anything else gets bounced back</li>
+      <li>you paste a CA (base58, 32-44 chars) — an @username routes to the account history check instead, anything else gets bounced back</li>
       <li>HOOPIUM pulls market structure from DexScreener: price, market cap, 24h volume, pair age, and liquidity summed across every pool where the token trades</li>
       <li>it checks the chain itself: mint &amp; freeze authority status and top-10 holder concentration</li>
       <li>for pump.fun tokens: bonding curve progress, or whether it already graduated to Raydium — plus the token's own lore/description</li>
@@ -124,6 +124,19 @@
       <li>it reads the <span class="hl">current market meta</span> from what's live and trending on pump.fun right now, and judges whether this coin's narrative fits it</li>
       <li>plain if/else heuristics turn all of that into red flags and a <span class="hl">0-100 HOOPIUM score</span>, your own buy rules get evaluated, and the report is written up in the terminal</li>
     </ol>
+
+    <h2>x account receipts</h2>
+    <p>
+      Half the rugs in the trenches start with a "dev" account created last week. Drop an
+      <span class="hl">@username</span> in the terminal and HOOPIUM digs through the
+      <span class="hl">Wayback Machine's public archives</span> instead of the chain: the oldest
+      archived snapshot of the profile is the account's <span class="hl">confirmed minimum age</span>,
+      the archived display name and bio show whether it was rebranded, and the tweet count then
+      vs now gets compared — with a <span class="hl">possible mass deletion</span> flag only when
+      the drop is big enough to be real evidence. X blocks direct scraping, so it's best-effort
+      by design: whatever couldn't be verified is listed as NOT CONFIRMED, never guessed.
+      No X API, no paid data.
+    </p>
 
     <h2>two verdicts, not one</h2>
     <p>
