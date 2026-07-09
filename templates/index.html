@@ -470,9 +470,123 @@
     }
 
     footer .nfa { color: var(--red); }
+
+    /* ---------- BOOT INTRO ---------- */
+    #boot {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 998; /* below the scanlines overlay (999) so the CRT effect stays on top */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.45s ease;
+    }
+
+    #boot.done { opacity: 0; pointer-events: none; }
+
+    .boot-inner { width: min(600px, 90vw); }
+
+    #boot-screen {
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 2;
+      color: var(--green);
+      white-space: pre-wrap;
+      min-height: 300px;
+      text-shadow: 0 0 6px rgba(51, 255, 51, 0.35);
+    }
+
+    #boot-screen .ok { color: var(--amber); }
+    #boot-screen .granted { color: var(--amber); text-shadow: 0 0 8px rgba(255, 191, 0, 0.4); }
+
+    .boot-cursor { animation: boot-blink 0.9s steps(1) infinite; }
+
+    @keyframes boot-blink { 50% { opacity: 0; } }
+
+    .boot-skip {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--green-dim);
+      text-align: center;
+    }
   </style>
 </head>
 <body>
+  <div id="boot" aria-hidden="true">
+    <div class="boot-inner">
+      <pre id="boot-screen"></pre>
+      <p class="boot-skip">[ click anywhere to skip ]</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const boot = document.getElementById("boot");
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (sessionStorage.getItem("hoopium_booted") || reduced) {
+        boot.remove();
+        return;
+      }
+
+      const screen = document.getElementById("boot-screen");
+      const CMD = "./hoopium --initialize";
+      const LINES = [
+        "loading rug detection heuristics",
+        "connecting to solana mainnet",
+        "syncing pump.fun meta radar",
+        "mounting wayback archive reader",
+        "calibrating copium levels",
+      ];
+
+      let out = "&gt; ";
+      let done = false;
+
+      function render(cursor) {
+        screen.innerHTML = out + (cursor ? '<span class="boot-cursor">█</span>' : "");
+      }
+
+      function finish() {
+        if (done) return;
+        done = true;
+        sessionStorage.setItem("hoopium_booted", "1");
+        boot.classList.add("done");
+        setTimeout(function () { boot.remove(); }, 500);
+      }
+
+      boot.addEventListener("click", finish);
+      document.addEventListener("keydown", finish);
+
+      let ci = 0;
+      function typeCmd() {
+        if (done) return;
+        if (ci < CMD.length) {
+          out += CMD.charAt(ci++);
+          render(true);
+          setTimeout(typeCmd, 38 + Math.random() * 42);
+        } else {
+          setTimeout(bootLines, 320);
+        }
+      }
+
+      let li = 0;
+      function bootLines() {
+        if (done) return;
+        if (li < LINES.length) {
+          out += '\n  <span class="ok">[ OK ]</span> ' + LINES[li++];
+          render(true);
+          setTimeout(bootLines, 130 + Math.random() * 100);
+        } else {
+          out += '\n\n<span class="granted">access granted, ser. welcome to the trenches.</span>';
+          render(false);
+          setTimeout(finish, 750);
+        }
+      }
+
+      render(true);
+      setTimeout(typeCmd, 400);
+    })();
+  </script>
   <nav>
     <div class="logo">HOOPIUM_</div>
     <div class="links">
