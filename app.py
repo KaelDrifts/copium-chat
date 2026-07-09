@@ -104,17 +104,23 @@ Format the report with these sections, in this order, using plain text headers l
 2. TWEET COUNT CHECK — the tweet count comparison, ONLY if the analysis contains one. Say which
    source the current count came from (live profile or newest archived snapshot).
 3. FLAGS — every flag found, one per line. If none, say so.
-4. NOT CONFIRMED — everything the check explicitly could NOT verify. Never paper over gaps.
+4. NOT CONFIRMED — everything the check explicitly could NOT verify, each in a few words. Keep
+   this section to single short lines; never a wall of disclaimers.
 5. GUT TAKE — one short paragraph on how much history this account can actually prove. If there is
    no evidence of anything shady, say so plainly instead of inventing suspicion.
+
+SPECIAL CASE — when the analysis says no data was found at all: skip the sections and keep the
+whole report to 3-4 lines. Lead with "no red flags found", then ONE short line saying the
+account's history couldn't be independently verified (and that this is common for real accounts
+too), then the closing note. Friendly and calm, not alarmist.
 
 Always end the whole report with this exact line, verbatim:
 "note: this is best-effort based on public Wayback Machine archives — X blocks direct scraping, so the data may be incomplete."
 
 Strict rules (never break them):
 - ONLY use the data given to you. NEVER invent dates, counts, bios or flags.
-- If the analysis says no snapshots were found, the report must say exactly that: nothing could be
-  confirmed either way. Do not treat absence of archives as evidence of a fresh or fake account.
+- Do not treat absence of archives as evidence of a fresh or fake account — but never claim the
+  account was verified as clean or normal when nothing could be checked.
 - Light CT slang is fine (ser, larp, ngmi) but stay factual and readable.
 - Reply in English unless the analysis is clearly in another language.
 """
@@ -534,8 +540,8 @@ def check_twitter_history(username):
                 errors.append(err)
     else:
         result["unconfirmed"].append(
-            "account age: no Wayback Machine snapshots exist for this profile, so nothing "
-            "could be confirmed either way (many real accounts are simply never archived)"
+            "account history could not be independently verified — this profile has no "
+            "Wayback Machine archive coverage (many real accounts are simply never archived)"
         )
 
     result["live_profile"], result["live_error"] = fetch_live_x_profile(username)
@@ -561,13 +567,13 @@ def check_twitter_history(username):
                 f"possible mass tweet deletion: {old_count:,} tweets archived on "
                 f"{result['oldest_snapshot_date']} vs {current_count:,} now ({current_source})"
             )
-    else:
+    elif snapshots:  # with zero snapshots the single no-coverage line above already covers this
         result["unconfirmed"].append(
             "tweet count comparison: could not extract a tweet count from "
             + ("the archived snapshots" if old_count is None else "the current profile")
         )
 
-    if result["live_profile"] is None:
+    if result["live_profile"] is None and snapshots:
         result["unconfirmed"].append(f"current live profile: {result['live_error']}")
 
     return result
@@ -575,6 +581,22 @@ def check_twitter_history(username):
 
 def format_twitter_report_for_llm(result):
     lines = [f"X/TWITTER ACCOUNT HISTORY CHECK for @{result['username']}", ""]
+
+    # Nothing found anywhere: keep the analysis compact so the write-up comes out short
+    # and clean instead of a wall of empty sections
+    if not result["snapshot_count"] and not result["live_profile"]:
+        lines.append("RESULT: no red flags found.")
+        lines.append(
+            "- No Wayback Machine archive coverage and the live profile is blocked, so the "
+            "account's history could not be independently verified. This is common for real "
+            "accounts too and is NOT evidence of anything shady."
+        )
+        lines.append("")
+        lines.append(
+            "note: this is best-effort based on public Wayback Machine archives — "
+            "X blocks direct scraping, so the data may be incomplete."
+        )
+        return "\n".join(lines)
 
     lines.append("ARCHIVE DATA (Wayback Machine):")
     if result["snapshot_count"]:
