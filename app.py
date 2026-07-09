@@ -56,6 +56,8 @@ CA_CANDIDATE_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
 # X/Twitter handles: 1-15 chars, letters/digits/underscore, optional leading @
 X_USERNAME_RE = re.compile(r"^@?([A-Za-z0-9_]{1,15})$")
+X_URL_USERNAME_RE = re.compile(r"(?:twitter\.com|x\.com)/@?([A-Za-z0-9_]{1,15})(?:[/?#]|$)")
+X_URL_NON_USERNAMES = {"intent", "search", "share", "home", "hashtag", "i", "login"}
 
 WAYBACK_CDX_URL = "http://web.archive.org/cdx/search/cdx"
 WAYBACK_SNAPSHOT_URL = "https://web.archive.org/web/{timestamp}/https://twitter.com/{username}"
@@ -71,16 +73,22 @@ Format the report with these sections, in this order, using plain text headers l
 1. HARD DATA — price, liquidity, 24h volume, market cap, pair age, authorities, top-10 holder %, bonding curve / migration status.
 2. RED FLAGS — every flag found, one per line, worst first. If none, say so.
 3. COMPARABLES — how similar-named tokens are doing, and what that suggests.
-4. META FIT — from the list of currently live/trending pump.fun tokens, describe in 1-2 lines
+4. DEV ACCOUNT — include this section whenever the analysis has a "DEV/PROJECT X ACCOUNT" block
+   (skip only if that block is absent): 1-2 lines naming the linked account's @handle and how much
+   verifiable history it has (oldest archived snapshot date = its confirmed minimum age). This section
+   is an EXCEPTION to the no-sources rule: here you may say the data comes from public web
+   archives. If the account has no archive coverage, say its age could not be verified either
+   way — never treat missing coverage alone as a red flag.
+5. META FIT — from the list of currently live/trending pump.fun tokens, describe in 1-2 lines
    what the current market meta is (which themes/narratives are running right now), then judge
    whether this token's lore/narrative fits that meta or not, and what that means for it.
-5. YOUR RULES — ONLY if the analysis includes "USER'S OWN BUY RULES": restate each rule with
+6. YOUR RULES — ONLY if the analysis includes "USER'S OWN BUY RULES": restate each rule with
    its PASS/FAIL/UNKNOWN result and the already-computed WOULD BUY / WOULD NOT BUY verdict.
    Never change that verdict. Skip this section entirely if no user rules are present.
-6. GUT TAKE — one short paragraph: would you personally ape in or not, and why. Factor in the
+7. GUT TAKE — one short paragraph: would you personally ape in or not, and why. Factor in the
    meta fit. ALWAYS end this section stating clearly that this is an automated opinion based
    on heuristics, NOT financial advice.
-7. HOOPIUM SCORE — the very LAST section. First line exactly in this format:
+8. HOOPIUM SCORE — the very LAST section. First line exactly in this format:
    "<score>/100 — RISK: <LOW|MEDIUM|HIGH>", then one line of justification.
 
 Strict rules (never break them):
@@ -204,6 +212,14 @@ def fetch_dexscreener(ca):
             "price_change_24h_pct": _to_float((best.get("priceChange") or {}).get("h24")),
             "pair_age_days": age_days,
             "dex": best.get("dexId"),
+            "twitter": next(
+                (
+                    s.get("url")
+                    for s in ((best.get("info") or {}).get("socials") or [])
+                    if isinstance(s, dict) and s.get("type") == "twitter" and s.get("url")
+                ),
+                None,
+            ),
         }, None
     except Exception as e:
         return None, f"DexScreener: {e}"
@@ -284,6 +300,7 @@ def fetch_pumpfun(ca):
             "name": coin.get("name"),
             "symbol": coin.get("symbol"),
             "description": (coin.get("description") or "").strip()[:300] or None,
+            "twitter": coin.get("twitter"),
         }, None
     except requests.HTTPError as e:
         if e.response is not None and e.response.status_code == 404:
@@ -421,6 +438,53 @@ def fetch_wayback_snapshots(username):
 def _wayback_date(timestamp):
     """'20190403121530' -> '2019-04-03'."""
     return f"{timestamp[0:4]}-{timestamp[4:6]}-{timestamp[6:8]}"
+
+
+def extract_x_username_from_url(url):
+    """Handle from a twitter.com/x.com profile URL (as linked in token socials)."""
+    match = X_URL_USERNAME_RE.search(str(url or ""))
+    if match and match.group(1).lower() not in X_URL_NON_USERNAMES:
+        return match.group(1)
+    return None
+
+
+def fetch_dev_twitter_age(username):
+    """CDX-only Wayback check for the X account linked in a token's socials.
+
+    Deliberately light (no snapshot HTML fetches, short timeout): it runs inline
+    inside every CA scan and must not stall the report."""
+    last_error = None
+    for domain in ("twitter.com", "x.com"):
+        try:
+            resp = requests.get(
+                WAYBACK_CDX_URL,
+                params={
+                    "url": f"{domain}/{username}",
+                    "output": "json",
+                    "fl": "timestamp,statuscode",
+                    "collapse": "digest",
+                },
+                headers=HTTP_HEADERS,
+                timeout=8,
+            )
+            resp.raise_for_status()
+            rows = resp.json()
+            stamps = sorted(
+                str(row[0])
+                for row in (rows[1:] if isinstance(rows, list) else [])
+                if isinstance(row, list) and row and str(row[0]).isdigit()
+            )
+            if stamps:
+                return {
+                    "username": username,
+                    "snapshot_count": len(stamps),
+                    "oldest_snapshot_date": _wayback_date(stamps[0]),
+                }, None
+        except Exception as e:
+            last_error = e
+    if last_error:
+        return None, f"dev X account (Wayback): {last_error}"
+    return {"username": username, "snapshot_count": 0, "oldest_snapshot_date": None}, None
 
 
 def parse_twitter_profile_html(html):
@@ -704,6 +768,15 @@ def build_risk_report(ca):
     if err:
         errors.append(err)
 
+    dev_twitter = None
+    dev_username = extract_x_username_from_url(
+        (pump or {}).get("twitter") or (dex or {}).get("twitter")
+    )
+    if dev_username:
+        dev_twitter, err = fetch_dev_twitter_age(dev_username)
+        if err:
+            errors.append(err)
+
     narrative = {
         "name": (pump or {}).get("name") or (dex or {}).get("name"),
         "symbol": (pump or {}).get("symbol") or (dex or {}).get("symbol"),
@@ -781,6 +854,7 @@ def build_risk_report(ca):
         "comparables": similar,
         "meta_trending": trending,
         "narrative": narrative,
+        "dev_twitter": dev_twitter,
         "data_source_errors": errors,
     }
     report["hoopium_score"] = compute_hoopium_score(report)
@@ -1105,6 +1179,23 @@ def format_report_for_llm(report):
     else:
         lines.append("- none found")
 
+    dev = report.get("dev_twitter")
+    if dev:
+        lines.append("")
+        lines.append("DEV/PROJECT X ACCOUNT (from the token's linked socials — always name the handle in the report):")
+        lines.append(f"- Handle: @{dev['username']}")
+        if dev["snapshot_count"]:
+            lines.append(
+                f"- Oldest archived snapshot: {dev['oldest_snapshot_date']} — this is the account's "
+                "confirmed minimum age (it may be older)"
+            )
+            lines.append(f"- Snapshots archived in total: {dev['snapshot_count']}")
+        else:
+            lines.append(
+                "- Archive coverage: none — the account's age could not be verified either way "
+                "(this alone is NOT a red flag; plenty of real accounts are never archived)"
+            )
+
     narrative = report.get("narrative") or {}
     lines.append("")
     lines.append("TOKEN LORE / NARRATIVE:")
@@ -1185,6 +1276,62 @@ def api_meta():
     return jsonify({"trending": _META_CACHE["data"]})
 
 
+@app.route("/scan/<query>")
+def scan_page(query):
+    """Shareable permalink: re-runs the scan client-side and shows the report."""
+    query = query.strip()
+    ca = extract_solana_ca(query)
+    username = None if ca else extract_x_username(query)
+    if not ca and not username:
+        return render_template("scan.html", query=None, is_ca=False), 404
+    return render_template("scan.html", query=ca or f"@{username}", is_ca=bool(ca))
+
+
+BADGE_COLORS = {"LOW": "#33ff33", "MEDIUM": "#ffbf00", "HIGH": "#ff4444"}
+
+
+def _badge_svg(label, color):
+    char_w = 8.5  # ~Courier at 12px bold
+    left_w = round(len("HOOPIUM") * char_w) + 18
+    right_w = round(len(label) * char_w) + 18
+    width = left_w + right_w
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="26" role="img" aria-label="HOOPIUM: {label}">
+  <rect width="{width}" height="26" fill="#000000"/>
+  <rect x="{left_w}" width="{right_w}" height="26" fill="#050a05"/>
+  <rect x="0.5" y="0.5" width="{width - 1}" height="25" fill="none" stroke="{color}" stroke-opacity="0.6"/>
+  <g font-family="Courier New,Courier,monospace" font-size="12" font-weight="bold">
+    <text x="9" y="17" fill="#33ff33">HOOPIUM</text>
+    <text x="{left_w + 9}" y="17" fill="{color}">{label}</text>
+  </g>
+</svg>"""
+
+
+@app.route("/badge/<ca>.svg")
+def badge(ca):
+    """Embeddable terminal-style score badge for a token."""
+    if not extract_solana_ca(ca):
+        return "not a valid solana CA", 404
+
+    cached = _SCAN_REPORT_CACHE.get(ca)
+    if cached and time.time() - cached[0] < SCAN_REPORT_CACHE_TTL_SECONDS:
+        report = cached[1]
+    else:
+        report, _ = build_risk_report(ca)
+        if report:
+            _SCAN_REPORT_CACHE[ca] = (time.time(), report)
+
+    if report:
+        label = f"{report['hoopium_score']}/100 · {report['risk_score']} RISK"
+        color = BADGE_COLORS.get(report["risk_score"], "#888888")
+    else:
+        label, color = "no data", "#888888"
+
+    resp = app.make_response(_badge_svg(label, color))
+    resp.headers["Content-Type"] = "image/svg+xml"
+    resp.headers["Cache-Control"] = "public, max-age=600"
+    return resp
+
+
 @app.route("/about")
 def about():
     return render_template("about.html")
@@ -1252,12 +1399,45 @@ def get_session_pubkey():
     return SESSIONS.get(token)
 
 
+# Terminal easter eggs: bare lowercase commands answered without touching any API.
+# Checked before username detection so "gm" is a greeting, not a scan of @gm (use @gm for that).
+EASTER_EGGS = {
+    "help": "commands, ser:\n"
+    "- paste a solana CA → full rug scan\n"
+    "- @username → X account history check\n"
+    "- history → your recent scans, click to re-run\n"
+    "- clear → wipe the terminal\n"
+    "also try: gm · wen · rug · wagmi · lore. that's the whole manual.",
+    "gm": "gm ser. the trenches never sleep and neither do the rugs. drop a CA and let's get to work.",
+    "gn": "gn ser. the devs deploy while you sleep — scan before you ape tomorrow.",
+    "wen": "wen what? wen lambo? wen 100x? first wen scan, ser. paste a CA.",
+    "wen lambo": "lambo is approximately two sensible scans away. paste a CA and stop aping 4-hour-old tickers.",
+    "rug": "rug is not a command, it's a lifestyle — one I'm here to save you from. paste a CA and I'll check it for rug vibes.",
+    "wagmi": "wagmi only if you scan before you ape, ser. drop a CA.",
+    "ngmi": "with that attitude? probably. scan something and turn it around.",
+    "ape": "ape responsibly, ser: CA first, feelings later.",
+    "dyor": "that's literally me. I am the R in your dyor. paste a CA.",
+    "lore": "born in the trenches, trained on a thousand rugs, powered by pure hoopium. that's the lore. now paste a CA.",
+    # handled client-side in the web terminal; this is the fallback for the extension
+    "clear": "clear only works in the web terminal, ser.",
+    "history": "history only works in the web terminal, ser.",
+}
+
+# Scan reports cached briefly so the badge endpoint and repeat scans don't re-hit every API
+_SCAN_REPORT_CACHE = {}  # ca -> (timestamp, report)
+SCAN_REPORT_CACHE_TTL_SECONDS = 600
+
+
 def run_scan(message, rules=None):
     """Scan logic shared by /api/chat (web, wallet-gated) and /api/scan (browser extension).
 
     Input routing: a valid Solana CA runs the token risk scan; a lone @username (or bare
     username-shaped string) runs the X account history check.
     """
+    egg = EASTER_EGGS.get(message.strip().lower().rstrip("?!. "))
+    if egg:
+        return jsonify({"reply": egg})
+
     ca = extract_solana_ca(message)
     username = None if ca else extract_x_username(message)
     if not ca and not username:
@@ -1302,11 +1482,14 @@ def run_scan(message, rules=None):
         + f"\nCOMPUTED RISK LEVEL: {report['risk_score']}"
     )
 
+    _SCAN_REPORT_CACHE[ca] = (time.time(), report)
+
     # Structured fields so the frontends can show the verdicts instantly
     extra = {
         "hoopium_score": report["hoopium_score"],
         "risk_level": report["risk_score"],
         "user_rules": rules_eval,
+        "permalink": f"/scan/{ca}",
     }
     return llm_reply(SYSTEM_PROMPT, analysis_text, extra)
 
@@ -1314,7 +1497,11 @@ def run_scan(message, rules=None):
 def run_twitter_scan(username):
     result = check_twitter_history(username)
     analysis_text = format_twitter_report_for_llm(result)
-    return llm_reply(X_HISTORY_SYSTEM_PROMPT, analysis_text, {"scan_type": "x_history"})
+    return llm_reply(
+        X_HISTORY_SYSTEM_PROMPT,
+        analysis_text,
+        {"scan_type": "x_history", "permalink": f"/scan/@{username}"},
+    )
 
 
 def llm_reply(system_prompt, analysis_text, extra):

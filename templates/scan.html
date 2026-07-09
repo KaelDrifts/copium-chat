@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HOOPIUM — scan {{ query or "not found" }}</title>
+  <meta name="description" content="HOOPIUM scan report — automated Solana rug-risk analysis with terminal vibes. Not financial advice." />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green: #33ff33;
+      --green-dim: #1a9c1a;
+      --amber: #ffbf00;
+      --red: #ff4444;
+      --bg: #000;
+      --panel: #050a05;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: "Courier New", Courier, monospace;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15) 0px,
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      z-index: 999;
+    }
+
+    a { color: var(--amber); }
+
+    nav {
+      position: sticky;
+      top: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: rgba(0, 0, 0, 0.92);
+      border-bottom: 1px solid var(--green-dim);
+      z-index: 100;
+    }
+
+    nav .logo { font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px var(--green); }
+    nav .logo a { color: var(--green); text-decoration: none; }
+    nav .links a { color: var(--green); text-decoration: none; margin-left: 20px; font-size: 14px; }
+    nav .links a:hover { color: var(--amber); }
+
+    main { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+
+    .terminal {
+      border: 1px solid var(--green-dim);
+      background: var(--panel);
+      box-shadow: 0 0 24px rgba(51, 255, 51, 0.08);
+    }
+
+    .titlebar {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--green-dim);
+      font-size: 13px;
+      color: var(--amber);
+    }
+
+    .body { padding: 18px; }
+
+    .query { color: var(--amber); word-break: break-all; }
+    .query::before { content: "> "; color: var(--green); }
+
+    #status { margin-top: 14px; font-size: 14px; }
+
+    .blink { animation: blink 0.9s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #result {
+      margin-top: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.8;
+      color: #b8ffb8;
+    }
+
+    .actions { margin-top: 22px; font-size: 14px; }
+    .actions a, .actions button {
+      background: none;
+      border: 1px solid var(--green-dim);
+      color: var(--amber);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 7px 14px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      display: inline-block;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .actions a:hover, .actions button:hover { border-color: var(--amber); }
+
+    .badge-row { margin-top: 18px; font-size: 12px; color: var(--green-dim); }
+    .badge-row img { vertical-align: middle; margin-right: 10px; }
+
+    .nfa { margin-top: 26px; font-size: 12px; color: var(--green-dim); }
+    .nfa strong { color: var(--red); }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo"><a href="/">HOOPIUM_</a></div>
+    <div class="links">
+      <a href="/">terminal</a>
+      <a href="/about">about</a>
+      <a href="/specs">specs</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="terminal">
+      <div class="titlebar">
+        <span>HOOPIUM v2.0 — shared scan report</span>
+        <span>[●●●]</span>
+      </div>
+      <div class="body">
+        {% if query %}
+        <div class="query">{{ query }}</div>
+        <div id="status">[HOOPIUM] scanning, ser... this takes a few seconds <span class="blink">▌</span></div>
+        <pre id="result" hidden></pre>
+        <div class="actions" id="actions" hidden>
+          <a id="share-x" href="#" target="_blank" rel="noopener">[ share on X ]</a>
+          <button id="copy-link">[ copy link ]</button>
+          <a href="/">[ scan another → ]</a>
+        </div>
+        {% if is_ca %}
+        <div class="badge-row" id="badge-row" hidden>
+          <img id="badge-img" alt="HOOPIUM score badge" />
+          embeddable badge: <a id="badge-link" href="#" target="_blank" rel="noopener"></a>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="query">404</div>
+        <div id="status">[ERROR] that's not a Solana CA or an @username, ser. <a href="/">back to the terminal</a></div>
+        {% endif %}
+        <p class="nfa"><strong>⚠ NOT FINANCIAL ADVICE.</strong> automated heuristics on public data — may be wrong or stale. dyor, ser.</p>
+      </div>
+    </div>
+  </main>
+
+  {% if query %}
+  <script>
+    (async function () {
+      const query = {{ query | tojson }};
+      const isCa = {{ is_ca | tojson }};
+      const status = document.getElementById("status");
+      const result = document.getElementById("result");
+
+      try {
+        const res = await fetch("/api/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: query }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || "scan failed");
+
+        status.hidden = true;
+        result.textContent = data.reply;
+        result.hidden = false;
+
+        const text = typeof data.hoopium_score === "number"
+          ? "HOOPIUM scan: " + data.hoopium_score + "/100 — RISK: " + data.risk_level + " · "
+          : "HOOPIUM X account history check of " + query + " · ";
+        document.getElementById("share-x").href =
+          "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text + location.href);
+        document.getElementById("actions").hidden = false;
+
+        const copyBtn = document.getElementById("copy-link");
+        copyBtn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(location.href);
+            copyBtn.textContent = "[ copied, ser ]";
+            setTimeout(() => { copyBtn.textContent = "[ copy link ]"; }, 1500);
+          } catch (e) {}
+        });
+
+        if (isCa && typeof data.hoopium_score === "number") {
+          const badgeUrl = location.origin + "/badge/" + query + ".svg";
+          document.getElementById("badge-img").src = badgeUrl;
+          const badgeLink = document.getElementById("badge-link");
+          badgeLink.href = badgeUrl;
+          badgeLink.textContent = badgeUrl;
+          document.getElementById("badge-row").hidden = false;
+        }
+      } catch (err) {
+        status.innerHTML = "";
+        status.textContent = "[ERROR] " + (err.message || "scan failed") + " — try again in a bit, ser.";
+      }
+    })();
+  </script>
+  {% endif %}
+</body>
+</html>

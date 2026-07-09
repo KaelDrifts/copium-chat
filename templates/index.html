@@ -471,6 +471,23 @@
 
     footer .nfa { color: var(--red); }
 
+    /* ---------- CHAT EXTRAS: share row, history ---------- */
+    .share-row { font-size: 12px; margin: 2px 0 10px; }
+    .share-row a { color: var(--green-dim); text-decoration: none; }
+    .share-row a:hover { color: var(--amber); }
+
+    .hist-item {
+      background: none;
+      border: none;
+      color: var(--amber);
+      font-family: inherit;
+      font-size: inherit;
+      cursor: pointer;
+      padding: 0;
+      text-align: left;
+    }
+    .hist-item:hover { text-decoration: underline; }
+
     /* ---------- BOOT INTRO ---------- */
     #boot {
       position: fixed;
@@ -867,7 +884,7 @@
         sessionStorage.setItem("hoopium_token", authToken);
         sessionStorage.setItem("hoopium_pubkey", walletPubkey);
         setConnectedUI();
-        addMessage("bot", "wallet verified, ser. wagmi. paste a solana token CA and I'll scan it for rug vibes, or an @username to check that X account's history (takes a few seconds). not financial advice, obviously.");
+        addMessage("bot", "wallet verified, ser. wagmi. paste a solana token CA and I'll scan it for rug vibes, or an @username to check that X account's history (takes a few seconds). type help for all commands. not financial advice, obviously.");
       } catch (err) {
         addMessage("error", err.message || "wallet connection rejected, ngmi");
       } finally {
@@ -912,11 +929,92 @@
       }
     }
 
+    // ---------- local scan history (this browser only) ----------
+    let scanHistory = [];
+    try { scanHistory = JSON.parse(localStorage.getItem("hoopium_history")) || []; } catch (e) {}
+    let histIndex = -1;
+
+    function rememberScan(message) {
+      scanHistory = scanHistory.filter((m) => m !== message);
+      scanHistory.push(message);
+      if (scanHistory.length > 20) scanHistory = scanHistory.slice(-20);
+      localStorage.setItem("hoopium_history", JSON.stringify(scanHistory));
+      histIndex = -1;
+    }
+
+    function showHistory() {
+      if (!scanHistory.length) {
+        addMessage("bot", "no scan history yet, ser. paste a CA or an @username first.");
+        return;
+      }
+      const div = document.createElement("div");
+      div.className = "msg bot";
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = "[HOOPIUM] ";
+      div.appendChild(tag);
+      div.appendChild(document.createTextNode("your recent scans (click to re-run):"));
+      scanHistory.slice().reverse().forEach((m) => {
+        div.appendChild(document.createElement("br"));
+        const b = document.createElement("button");
+        b.className = "hist-item";
+        b.textContent = "↻ " + m;
+        b.addEventListener("click", () => {
+          if (input.disabled) return;
+          input.value = m;
+          sendMessage();
+        });
+        div.appendChild(b);
+      });
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addShareRow(data) {
+      if (!data.permalink) return;
+      const div = document.createElement("div");
+      div.className = "msg share-row";
+      const perma = document.createElement("a");
+      perma.href = data.permalink;
+      perma.target = "_blank";
+      perma.rel = "noopener";
+      perma.textContent = "[permalink]";
+      const text = typeof data.hoopium_score === "number"
+        ? "HOOPIUM scan: " + data.hoopium_score + "/100 — RISK: " + data.risk_level + " · "
+        : "HOOPIUM X account history check · ";
+      const share = document.createElement("a");
+      share.href = "https://twitter.com/intent/tweet?text="
+        + encodeURIComponent(text + location.origin + data.permalink);
+      share.target = "_blank";
+      share.rel = "noopener";
+      share.textContent = "[share on X]";
+      div.appendChild(perma);
+      div.appendChild(document.createTextNode(" · "));
+      div.appendChild(share);
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
     async function sendMessage() {
       const message = input.value.trim();
       if (!message) return;
 
+      const lower = message.toLowerCase();
+      if (lower === "clear") {
+        input.value = "";
+        chat.innerHTML = "";
+        addMessage("bot", "terminal cleared. the trenches remain, ser.");
+        return;
+      }
+      if (lower === "history") {
+        addMessage("user", message);
+        input.value = "";
+        showHistory();
+        return;
+      }
+
       addMessage("user", message);
+      rememberScan(message);
       input.value = "";
       sendBtn.disabled = true;
       input.disabled = true;
@@ -942,6 +1040,7 @@
           addRulesVerdict(data);
           addMessage("bot", data.reply);
           addScoreMessage(data);
+          addShareRow(data);
         }
       } catch (err) {
         addMessage("error", "couldn't reach the server: " + err.message);
@@ -956,7 +1055,24 @@
 
     sendBtn.addEventListener("click", sendMessage);
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") sendMessage();
+      if (e.key === "Enter") {
+        sendMessage();
+      } else if (e.key === "ArrowUp") {
+        if (!scanHistory.length) return;
+        e.preventDefault();
+        histIndex = histIndex < 0 ? scanHistory.length - 1 : Math.max(0, histIndex - 1);
+        input.value = scanHistory[histIndex];
+      } else if (e.key === "ArrowDown") {
+        if (histIndex < 0) return;
+        e.preventDefault();
+        histIndex += 1;
+        if (histIndex >= scanHistory.length) {
+          histIndex = -1;
+          input.value = "";
+        } else {
+          input.value = scanHistory[histIndex];
+        }
+      }
     });
 
     // ---------- user buy rules (saved in this browser) ----------
