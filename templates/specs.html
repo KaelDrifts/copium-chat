@@ -142,7 +142,8 @@
       <li>liquidity under <span class="hl">$1,000</span> → red flag (you may not be able to sell)</li>
       <li>liquidity below <span class="hl">2% of market cap</span> → red flag (easy rug / heavy slippage); below 5% → warning</li>
       <li>24h volume below <span class="hl">1% of market cap</span> (or under $100) → possible dead token</li>
-      <li>pair younger than <span class="hl">1 day</span> → no track record warning</li>
+      <li>market cap under <span class="hl">$100k</span> → micro-cap warning; fewer than <span class="hl">200 holders</span> → tiny community warning</li>
+      <li>pair younger than <span class="hl">7 days</span> → no track record warning (and a hard cap on the score)</li>
       <li>pump.fun tokens: bonding curve % or Raydium migration status</li>
     </ul>
 
@@ -157,17 +158,22 @@
       <tr><td>mint authority active</td><td>-25</td></tr>
       <tr><td>freeze authority active</td><td>-25</td></tr>
       <tr><td>top-10 holders ≥80% / ≥50% / ≥30%</td><td>-30 / -20 / -10</td></tr>
-      <tr><td>liquidity under $1k</td><td>-30</td></tr>
+      <tr><td>liquidity under $1k / under $5k</td><td>-30 / -20</td></tr>
       <tr><td>liquidity &lt;2% / &lt;5% of mcap</td><td>-20 / -10</td></tr>
+      <tr><td>market cap under $20k / under $100k</td><td>-15 / -10</td></tr>
       <tr><td>dead 24h volume</td><td>-10</td></tr>
-      <tr><td>pair younger than 1 day</td><td>-10</td></tr>
-      <tr><td>still on bonding curve</td><td>-5</td></tr>
+      <tr><td>pair younger than 1 / 3 / 7 days</td><td>-25 / -15 / -10</td></tr>
+      <tr><td>still on bonding curve</td><td>-15</td></tr>
+      <tr><td>fewer than 50 / 200 / 500 holders</td><td>-20 / -10 / -5</td></tr>
       <tr><td>elevated third-party risk score</td><td>-10</td></tr>
       <tr><td>on-chain data unverifiable</td><td>-10</td></tr>
     </table>
     <p>
-      Two or more hard red flags cap the score at 35; one caps it at 65 — the number can never
-      disagree with the flags. Risk level: <span class="hl">≥70 LOW · 40-69 MEDIUM · &lt;40 HIGH</span>.
+      Hard caps keep the number honest: two or more red flags cap the score at 35, one caps it
+      at 65. And <span class="hl">no track record means no LOW rating</span>: a pair younger than
+      2 days can never score above 55, younger than 7 days never above 75 — renounced authorities
+      and a clean distribution are table stakes on pump.fun, not proof of anything.
+      Risk level: <span class="hl">≥80 LOW · 50-79 MEDIUM · &lt;50 HIGH</span>.
       The score is always the last section of the report.
     </p>
 

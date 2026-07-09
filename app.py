@@ -845,10 +845,18 @@ def build_risk_report(ca):
         elif liq is not None and mcap:
             ratio = liq / mcap
             if ratio < 0.02:
-                red_flags.append(
-                    f"Liquidity is only {ratio * 100:.1f}% of market cap "
-                    f"(${liq:,.0f} vs ${mcap:,.0f}) — easy rug / heavy slippage."
-                )
+                # Large caps trade mostly on CEXs, so a low on-chain ratio there is
+                # slippage info, not rug evidence
+                if mcap >= 10_000_000 and liq >= 250_000:
+                    warnings.append(
+                        f"On-chain liquidity is only {ratio * 100:.1f}% of market cap — "
+                        "big exits will eat slippage on-chain."
+                    )
+                else:
+                    red_flags.append(
+                        f"Liquidity is only {ratio * 100:.1f}% of market cap "
+                        f"(${liq:,.0f} vs ${mcap:,.0f}) — easy rug / heavy slippage."
+                    )
             elif ratio < 0.05:
                 warnings.append(f"Thin liquidity vs market cap ({ratio * 100:.1f}%).")
         if vol is not None and mcap and mcap > 0:
@@ -856,8 +864,15 @@ def build_risk_report(ca):
                 warnings.append(
                     f"24h volume (${vol:,.0f}) is tiny vs market cap — possibly a dead token."
                 )
-        if age is not None and age < 1:
-            warnings.append(f"Pair is only {age} days old — no track record at all.")
+        if mcap is not None and mcap < 100_000:
+            warnings.append(
+                f"Micro market cap (${mcap:,.0f}) — lottery-ticket territory, most of these go to zero."
+            )
+        if age is not None and age < 7:
+            warnings.append(
+                f"Pair is only {age} days old — no real track record "
+                "(a token this young can never rate LOW risk here)."
+            )
 
     if pump and pump.get("is_pumpfun") and not pump.get("migrated_to_raydium"):
         warnings.append(
@@ -868,6 +883,10 @@ def build_risk_report(ca):
                 else "."
             )
         )
+
+    holders = (rugcheck or {}).get("total_holders")
+    if isinstance(holders, (int, float)) and holders < 200:
+        warnings.append(f"Only {int(holders)} holders — tiny community, easy to dump on.")
 
     if onchain is None:
         warnings.append("On-chain data (authorities / holders) unavailable — score is less reliable.")
@@ -887,9 +906,9 @@ def build_risk_report(ca):
         "data_source_errors": errors,
     }
     report["hoopium_score"] = compute_hoopium_score(report)
-    if report["hoopium_score"] >= 70:
+    if report["hoopium_score"] >= 80:
         report["risk_score"] = "LOW"
-    elif report["hoopium_score"] >= 40:
+    elif report["hoopium_score"] >= 50:
         report["risk_score"] = "MEDIUM"
     else:
         report["risk_score"] = "HIGH"
@@ -927,16 +946,37 @@ def compute_hoopium_score(report):
     if liq is not None:
         if liq < 1_000:
             score -= 30
-        elif mcap and liq / mcap < 0.02:
+        elif liq < 5_000:
             score -= 20
+        elif mcap and liq / mcap < 0.02:
+            score -= 10 if (mcap >= 10_000_000 and liq >= 250_000) else 20
         elif mcap and liq / mcap < 0.05:
+            score -= 10
+    if mcap is not None:
+        if mcap < 20_000:
+            score -= 15
+        elif mcap < 100_000:
             score -= 10
     if vol is not None and mcap and (vol / mcap < 0.01 or vol < 100):
         score -= 10
-    if age is not None and age < 1:
-        score -= 10
+    if age is not None:
+        if age < 1:
+            score -= 25
+        elif age < 3:
+            score -= 15
+        elif age < 7:
+            score -= 10
     if pump.get("is_pumpfun") and not pump.get("migrated_to_raydium"):
-        score -= 5
+        score -= 15  # the overwhelming majority of coins on the curve never migrate
+
+    holders = rugcheck.get("total_holders")
+    if isinstance(holders, (int, float)):
+        if holders < 50:
+            score -= 20
+        elif holders < 200:
+            score -= 10
+        elif holders < 500:
+            score -= 5
 
     rc_score = rugcheck.get("score")
     if isinstance(rc_score, (int, float)) and rc_score >= 50:
@@ -944,6 +984,14 @@ def compute_hoopium_score(report):
 
     if report["onchain"] is None:
         score -= 10  # can't verify authorities/holders: less trust
+
+    # No track record = no LOW rating, period. Renounced authorities and a clean
+    # distribution are table stakes on pump.fun, not proof of anything.
+    if age is not None:
+        if age < 2:
+            score = min(score, 55)
+        elif age < 7:
+            score = min(score, 75)
 
     # Keep the number consistent with the flags: hard red flags cap the score
     if len(report["red_flags"]) >= 2:
