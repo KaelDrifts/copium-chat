@@ -1312,6 +1312,23 @@ def _fmt(value):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+# Pre-launch: keep the site out of search engines. Set HOOPIUM_PUBLIC=1 to lift it.
+NOINDEX = not os.environ.get("HOOPIUM_PUBLIC")
+
+
+@app.after_request
+def _noindex(response):
+    if NOINDEX:
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
+
+
+@app.route("/robots.txt")
+def robots():
+    body = "User-agent: *\nDisallow: /\n" if NOINDEX else "User-agent: *\nAllow: /\n"
+    return Response(body, mimetype="text/plain")
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
