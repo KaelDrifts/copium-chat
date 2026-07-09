@@ -471,7 +471,13 @@
 
     footer .nfa { color: var(--red); }
 
-    /* ---------- CHAT EXTRAS: share row, history ---------- */
+    /* ---------- CHAT EXTRAS: score badge, share row, history ---------- */
+    .score-badge {
+      height: 30px;
+      vertical-align: middle;
+      filter: drop-shadow(0 0 6px rgba(51, 255, 51, 0.25));
+    }
+
     .share-row { font-size: 12px; margin: 2px 0 10px; }
     .share-row a { color: var(--green-dim); text-decoration: none; }
     .share-row a:hover { color: var(--amber); }
@@ -924,9 +930,29 @@
     }
 
     function addScoreMessage(data) {
-      if (typeof data.hoopium_score === "number") {
-        addMessage("bot", `HOOPIUM score: ${data.hoopium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`);
+      if (typeof data.hoopium_score !== "number") return;
+      const div = document.createElement("div");
+      div.className = "msg bot";
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = "[HOOPIUM] ";
+      div.appendChild(tag);
+      const ca = data.permalink && !data.permalink.startsWith("/scan/@")
+        ? data.permalink.replace("/scan/", "")
+        : null;
+      if (ca) {
+        const img = document.createElement("img");
+        img.className = "score-badge";
+        img.src = "/badge/" + ca + ".svg";
+        img.alt = `HOOPIUM score: ${data.hoopium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`;
+        div.appendChild(img);
+      } else {
+        div.appendChild(document.createTextNode(
+          `HOOPIUM score: ${data.hoopium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`
+        ));
       }
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
     }
 
     // ---------- local scan history (this browser only) ----------
