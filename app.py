@@ -92,6 +92,9 @@ Format the report with these sections, in this order, using plain text headers l
    "<score>/100 — RISK: <LOW|MEDIUM|HIGH>", then one line of justification.
 
 Strict rules (never break them):
+- BE BRIEF. The whole report must fit in ~22 short lines: HARD DATA as one compact line per
+  metric (only the metrics that have data), COMPARABLES in max 2 lines total, every other
+  section 1-3 lines. No intro, no outro, no repeating yourself across sections.
 - ONLY use the data given to you. NEVER invent numbers, holders, flags or comparables.
 - NEVER talk about data sources, APIs, or where a number came from. If a value is missing,
   just call it unavailable and move on.
@@ -126,6 +129,7 @@ Always end the whole report with this exact line, verbatim:
 "note: this is best-effort based on public Wayback Machine archives — X blocks direct scraping, so the data may be incomplete."
 
 Strict rules (never break them):
+- BE BRIEF. The whole report must fit in ~12 short lines: 1-2 lines per section, no filler.
 - ONLY use the data given to you. NEVER invent dates, counts, bios or flags.
 - Do not treat absence of archives as evidence of a fresh or fake account — but never claim the
   account was verified as clean or normal when nothing could be checked.
@@ -1515,7 +1519,7 @@ def llm_reply(system_prompt, analysis_text, extra):
                 {"role": "user", "content": analysis_text},
             ],
             temperature=0.4,
-            max_tokens=1024,
+            max_tokens=700,
         )
         reply = completion.choices[0].message.content
         return jsonify({"reply": reply, **extra})
