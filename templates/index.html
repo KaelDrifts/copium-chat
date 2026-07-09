@@ -1019,6 +1019,13 @@
       sendBtn.disabled = true;
       input.disabled = true;
 
+      const typing = document.createElement("div");
+      typing.className = "msg bot";
+      typing.innerHTML = '<span class="tag">[HOOPIUM] </span>scanning, ser... <span class="boot-cursor">▌</span>';
+      chat.appendChild(typing);
+      chat.scrollTop = chat.scrollHeight;
+      const clearTyping = () => { if (typing.parentNode) typing.remove(); };
+
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -1026,25 +1033,85 @@
             "Content-Type": "application/json",
             "Authorization": "Bearer " + authToken,
           },
-          body: JSON.stringify({ message, rules }),
+          body: JSON.stringify({ message, rules, stream: true }),
         });
-        const data = await res.json();
         if (res.status === 401) {
+          clearTyping();
           setDisconnectedUI();
           addMessage("error", "session expired, ser. reconnect your wallet.");
           return;
         }
-        if (!res.ok || data.error) {
-          addMessage("error", data.error || "something broke, ngmi");
-        } else {
-          addRulesVerdict(data);
-          addMessage("bot", data.reply);
-          addScoreMessage(data);
-          addShareRow(data);
+
+        const ctype = res.headers.get("content-type") || "";
+        if (!ctype.includes("ndjson")) {
+          // plain JSON: request errors, or a server that doesn't stream
+          const data = await res.json();
+          clearTyping();
+          if (!res.ok || data.error) {
+            addMessage("error", data.error || "something broke, ngmi");
+          } else {
+            addRulesVerdict(data);
+            addMessage("bot", data.reply);
+            addScoreMessage(data);
+            addShareRow(data);
+          }
+          return;
+        }
+
+        // NDJSON stream: {"meta"} first, then {"delta"} chunks typed into one message
+        let meta = null;
+        let botText = null;
+        const handleLine = (line) => {
+          if (!line.trim()) return;
+          let obj;
+          try { obj = JSON.parse(line); } catch (e) { return; }
+          clearTyping();
+          if (obj.meta) {
+            meta = obj.meta;
+            addRulesVerdict(meta);
+          } else if (obj.reply) {
+            addMessage("bot", obj.reply);
+          } else if (obj.error) {
+            addMessage("error", obj.error);
+          } else if (obj.delta) {
+            if (!botText) {
+              const div = document.createElement("div");
+              div.className = "msg bot";
+              const tag = document.createElement("span");
+              tag.className = "tag";
+              tag.textContent = "[HOOPIUM] ";
+              botText = document.createTextNode("");
+              div.appendChild(tag);
+              div.appendChild(botText);
+              chat.appendChild(div);
+            }
+            botText.data += obj.delta;
+            chat.scrollTop = chat.scrollHeight;
+          }
+        };
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let nl;
+          while ((nl = buf.indexOf("\n")) >= 0) {
+            handleLine(buf.slice(0, nl));
+            buf = buf.slice(nl + 1);
+          }
+        }
+        handleLine(buf);
+        if (meta) {
+          addScoreMessage(meta);
+          addShareRow(meta);
         }
       } catch (err) {
         addMessage("error", "couldn't reach the server: " + err.message);
       } finally {
+        clearTyping();
         if (authToken) {
           sendBtn.disabled = false;
           input.disabled = false;

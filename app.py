@@ -1,17 +1,19 @@
 import ast
 import io
+import json
 import operator
 import os
 import re
 import secrets
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from html import unescape
 
 import base58
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, Response, jsonify, render_template, request, send_file, stream_with_context
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey
 
@@ -43,6 +45,8 @@ PUMPFUN_LIVE_URL = "https://frontend-api-v3.pump.fun/coins/currently-live?offset
 RUGCHECK_REPORT_URL = "https://api.rugcheck.xyz/v1/tokens/{}/report"
 
 HTTP_TIMEOUT = 10
+# Public Solana RPCs rate-limit hard; fail fast and let RugCheck backfill instead of stalling scans
+RPC_TIMEOUT = 4
 # Browser-like UA: several of the free endpoints throttle or 403 unknown user agents
 HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
@@ -61,8 +65,9 @@ X_URL_NON_USERNAMES = {"intent", "search", "share", "home", "hashtag", "i", "log
 
 WAYBACK_CDX_URL = "http://web.archive.org/cdx/search/cdx"
 WAYBACK_SNAPSHOT_URL = "https://web.archive.org/web/{timestamp}/https://twitter.com/{username}"
-# Wayback can be slow, especially the CDX index
-WAYBACK_TIMEOUT = 30
+# Wayback can be slow, especially the CDX index; cap it so a throttled Wayback
+# degrades the report instead of stalling it
+WAYBACK_TIMEOUT = 20
 
 SYSTEM_PROMPT = """You are HOOPIUM, a Solana token risk scanner with a crypto-twitter (CT) personality.
 
@@ -237,7 +242,7 @@ def _rpc_call(method, params):
                 url,
                 json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
                 headers=HTTP_HEADERS,
-                timeout=HTTP_TIMEOUT,
+                timeout=RPC_TIMEOUT,
             )
             if resp.status_code == 429:
                 raise RuntimeError("rate limited (429)")
@@ -455,9 +460,11 @@ def extract_x_username_from_url(url):
 def fetch_dev_twitter_age(username):
     """CDX-only Wayback check for the X account linked in a token's socials.
 
-    Deliberately light (no snapshot HTML fetches, short timeout): it runs inline
-    inside every CA scan and must not stall the report."""
+    Deliberately light: it runs inline inside every CA scan, so it only asks the CDX
+    index for the single OLDEST snapshot (limit=1 lets Wayback stop scanning early)
+    with a short timeout, and fetches no snapshot HTML."""
     last_error = None
+    any_success = False
     for domain in ("twitter.com", "x.com"):
         try:
             resp = requests.get(
@@ -465,30 +472,30 @@ def fetch_dev_twitter_age(username):
                 params={
                     "url": f"{domain}/{username}",
                     "output": "json",
-                    "fl": "timestamp,statuscode",
-                    "collapse": "digest",
+                    "fl": "timestamp",
+                    "limit": "1",
                 },
                 headers=HTTP_HEADERS,
-                timeout=8,
+                timeout=4,
             )
             resp.raise_for_status()
             rows = resp.json()
-            stamps = sorted(
+            any_success = True
+            stamps = [
                 str(row[0])
                 for row in (rows[1:] if isinstance(rows, list) else [])
                 if isinstance(row, list) and row and str(row[0]).isdigit()
-            )
+            ]
             if stamps:
                 return {
                     "username": username,
-                    "snapshot_count": len(stamps),
                     "oldest_snapshot_date": _wayback_date(stamps[0]),
                 }, None
         except Exception as e:
             last_error = e
-    if last_error:
+    if not any_success:
         return None, f"dev X account (Wayback): {last_error}"
-    return {"username": username, "snapshot_count": 0, "oldest_snapshot_date": None}, None
+    return {"username": username, "oldest_snapshot_date": None}, None
 
 
 def parse_twitter_profile_html(html):
@@ -592,27 +599,34 @@ def check_twitter_history(username):
         "data_source_errors": errors,
     }
 
-    if snapshots:
-        # Prefer snapshots that archived an actual page (2xx), fall back to whatever exists
-        good = [s for s in snapshots if str(s["statuscode"]).startswith("2")] or snapshots
-        oldest, newest = good[0], good[-1]
-        result["oldest_snapshot_date"] = _wayback_date(oldest["timestamp"])
-        result["newest_snapshot_date"] = _wayback_date(newest["timestamp"])
+    # Snapshot pages and the live profile are independent fetches — run them in parallel
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_live = pool.submit(fetch_live_x_profile, username)
+        f_oldest = f_newest = None
+        if snapshots:
+            # Prefer snapshots that archived an actual page (2xx), fall back to whatever exists
+            good = [s for s in snapshots if str(s["statuscode"]).startswith("2")] or snapshots
+            oldest, newest = good[0], good[-1]
+            result["oldest_snapshot_date"] = _wayback_date(oldest["timestamp"])
+            result["newest_snapshot_date"] = _wayback_date(newest["timestamp"])
+            f_oldest = pool.submit(fetch_wayback_profile, oldest["timestamp"], username)
+            if newest["timestamp"] != oldest["timestamp"]:
+                f_newest = pool.submit(fetch_wayback_profile, newest["timestamp"], username)
+        else:
+            result["unconfirmed"].append(
+                "account history could not be independently verified — this profile has no "
+                "Wayback Machine archive coverage (many real accounts are simply never archived)"
+            )
 
-        result["oldest_profile"], err = fetch_wayback_profile(oldest["timestamp"], username)
-        if err:
-            errors.append(err)
-        if newest["timestamp"] != oldest["timestamp"]:
-            result["newest_profile"], err = fetch_wayback_profile(newest["timestamp"], username)
+        if f_oldest:
+            result["oldest_profile"], err = f_oldest.result()
             if err:
                 errors.append(err)
-    else:
-        result["unconfirmed"].append(
-            "account history could not be independently verified — this profile has no "
-            "Wayback Machine archive coverage (many real accounts are simply never archived)"
-        )
-
-    result["live_profile"], result["live_error"] = fetch_live_x_profile(username)
+        if f_newest:
+            result["newest_profile"], err = f_newest.result()
+            if err:
+                errors.append(err)
+        result["live_profile"], result["live_error"] = f_live.result()
 
     old_count = (result["oldest_profile"] or {}).get("tweet_count")
     current_count = (result["live_profile"] or {}).get("tweet_count")
@@ -734,21 +748,51 @@ def format_twitter_report_for_llm(result):
 def build_risk_report(ca):
     errors = []
 
-    dex, err = fetch_dexscreener(ca)
-    if err:
-        errors.append(err)
-    onchain, err = fetch_onchain(ca)
-    if err:
-        errors.append(err)
-    pump, err = fetch_pumpfun(ca)
-    if err:
-        errors.append(err)
-    rugcheck, err = fetch_rugcheck(ca)
-    if err:
-        errors.append(err)
+    # Everything network-bound runs in one pool. The second wave only needs the fast
+    # dex/pump results, so it overlaps with the slow on-chain RPC calls.
+    with ThreadPoolExecutor(max_workers=7) as pool:
+        f_dex = pool.submit(fetch_dexscreener, ca)
+        f_onchain = pool.submit(fetch_onchain, ca)
+        f_pump = pool.submit(fetch_pumpfun, ca)
+        f_rug = pool.submit(fetch_rugcheck, ca)
 
-    if dex is None and onchain is None and rugcheck is None:
-        return None, errors
+        dex, err = f_dex.result()
+        if err:
+            errors.append(err)
+        pump, err = f_pump.result()
+        if err:
+            errors.append(err)
+
+        f_similar = pool.submit(
+            fetch_similar_tokens, (dex or {}).get("name"), (dex or {}).get("symbol"), ca
+        )
+        f_trending = pool.submit(fetch_pumpfun_trending)
+        dev_username = extract_x_username_from_url(
+            (pump or {}).get("twitter") or (dex or {}).get("twitter")
+        )
+        f_dev = pool.submit(fetch_dev_twitter_age, dev_username) if dev_username else None
+
+        onchain, err = f_onchain.result()
+        if err:
+            errors.append(err)
+        rugcheck, err = f_rug.result()
+        if err:
+            errors.append(err)
+
+        if dex is None and onchain is None and rugcheck is None:
+            return None, errors
+
+        similar, err = f_similar.result()
+        if err:
+            errors.append(err)
+        trending, err = f_trending.result()
+        if err:
+            errors.append(err)
+        dev_twitter = None
+        if f_dev:
+            dev_twitter, err = f_dev.result()
+            if err:
+                errors.append(err)
 
     # RPC data missing (public endpoints throttle hard)? Backfill from RugCheck's report
     if rugcheck:
@@ -761,25 +805,6 @@ def build_risk_report(ca):
             }
         elif onchain.get("top10_holders_pct") is None:
             onchain["top10_holders_pct"] = rugcheck.get("top10_holders_pct")
-
-    similar, err = fetch_similar_tokens(
-        (dex or {}).get("name"), (dex or {}).get("symbol"), ca
-    )
-    if err:
-        errors.append(err)
-
-    trending, err = fetch_pumpfun_trending()
-    if err:
-        errors.append(err)
-
-    dev_twitter = None
-    dev_username = extract_x_username_from_url(
-        (pump or {}).get("twitter") or (dex or {}).get("twitter")
-    )
-    if dev_username:
-        dev_twitter, err = fetch_dev_twitter_age(dev_username)
-        if err:
-            errors.append(err)
 
     narrative = {
         "name": (pump or {}).get("name") or (dex or {}).get("name"),
@@ -1188,12 +1213,11 @@ def format_report_for_llm(report):
         lines.append("")
         lines.append("DEV/PROJECT X ACCOUNT (from the token's linked socials — always name the handle in the report):")
         lines.append(f"- Handle: @{dev['username']}")
-        if dev["snapshot_count"]:
+        if dev["oldest_snapshot_date"]:
             lines.append(
                 f"- Oldest archived snapshot: {dev['oldest_snapshot_date']} — this is the account's "
                 "confirmed minimum age (it may be older)"
             )
-            lines.append(f"- Snapshots archived in total: {dev['snapshot_count']}")
         else:
             lines.append(
                 "- Archive coverage: none — the account's age could not be verified either way "
@@ -1432,51 +1456,49 @@ _SCAN_REPORT_CACHE = {}  # ca -> (timestamp, report)
 SCAN_REPORT_CACHE_TTL_SECONDS = 600
 
 
-def run_scan(message, rules=None):
-    """Scan logic shared by /api/chat (web, wallet-gated) and /api/scan (browser extension).
+def prepare_scan(message, rules=None):
+    """Run the full analysis and decide what to answer, without touching the LLM.
 
-    Input routing: a valid Solana CA runs the token risk scan; a lone @username (or bare
-    username-shaped string) runs the X account history check.
+    Returns (kind, payload):
+      ("reply", {"reply": text})                       — instant canned answer
+      ("error", {"error": text})                       — config problem, HTTP 500
+      ("llm",   {"system_prompt", "analysis_text", "extra"}) — ready for the writer
     """
     egg = EASTER_EGGS.get(message.strip().lower().rstrip("?!. "))
     if egg:
-        return jsonify({"reply": egg})
+        return "reply", {"reply": egg}
 
     ca = extract_solana_ca(message)
     username = None if ca else extract_x_username(message)
     if not ca and not username:
-        return jsonify(
-            {
-                "reply": "that doesn't look like a Solana contract address or an X handle, ser. "
-                "paste a token CA (base58, 32-44 chars, e.g. from dexscreener or pump.fun) "
-                "to scan it for rug vibes, or an @username to check that account's history."
-            }
-        )
+        return "reply", {
+            "reply": "that doesn't look like a Solana contract address or an X handle, ser. "
+            "paste a token CA (base58, 32-44 chars, e.g. from dexscreener or pump.fun) "
+            "to scan it for rug vibes, or an @username to check that account's history."
+        }
 
     if not os.environ.get("GROQ_API_KEY"):
-        return (
-            jsonify(
-                {
-                    "error": "Missing GROQ_API_KEY environment variable. "
-                    "Get a free key at https://console.groq.com and run: "
-                    "export GROQ_API_KEY=your_key"
-                }
-            ),
-            500,
-        )
+        return "error", {
+            "error": "Missing GROQ_API_KEY environment variable. "
+            "Get a free key at https://console.groq.com and run: "
+            "export GROQ_API_KEY=your_key"
+        }
 
     if username:
-        return run_twitter_scan(username)
+        result = check_twitter_history(username)
+        return "llm", {
+            "system_prompt": X_HISTORY_SYSTEM_PROMPT,
+            "analysis_text": format_twitter_report_for_llm(result),
+            "extra": {"scan_type": "x_history", "permalink": f"/scan/@{username}"},
+        }
 
     report, errors = build_risk_report(ca)
     if report is None:
         detail = " / ".join(errors) if errors else "no data returned"
-        return jsonify(
-            {
-                "reply": f"couldn't pull any data for {ca}, ser. either it's not a token mint, "
-                f"it has no market yet, or the free APIs are down. details: {detail}"
-            }
-        )
+        return "reply", {
+            "reply": f"couldn't pull any data for {ca}, ser. either it's not a token mint, "
+            f"it has no market yet, or the free APIs are down. details: {detail}"
+        }
 
     rules_eval = evaluate_user_rules(report, rules)
     analysis_text = (
@@ -1495,17 +1517,61 @@ def run_scan(message, rules=None):
         "user_rules": rules_eval,
         "permalink": f"/scan/{ca}",
     }
-    return llm_reply(SYSTEM_PROMPT, analysis_text, extra)
+    return "llm", {"system_prompt": SYSTEM_PROMPT, "analysis_text": analysis_text, "extra": extra}
 
 
-def run_twitter_scan(username):
-    result = check_twitter_history(username)
-    analysis_text = format_twitter_report_for_llm(result)
-    return llm_reply(
-        X_HISTORY_SYSTEM_PROMPT,
-        analysis_text,
-        {"scan_type": "x_history", "permalink": f"/scan/@{username}"},
-    )
+def run_scan(message, rules=None):
+    """Classic JSON answer (used by the browser extension and as a fallback)."""
+    kind, payload = prepare_scan(message, rules)
+    if kind == "reply":
+        return jsonify(payload)
+    if kind == "error":
+        return jsonify(payload), 500
+    return llm_reply(payload["system_prompt"], payload["analysis_text"], payload["extra"])
+
+
+def run_scan_stream(message, rules=None):
+    """NDJSON streaming answer: one meta line, then the report as it's written.
+
+    Line protocol (one JSON object per line):
+      {"meta": {...}}   — structured fields (score, permalink, rules verdict)
+      {"delta": "..."}  — next chunk of the report text
+      {"reply": "..."}  — full instant answer (easter eggs, bad input)
+      {"error": "..."}  — something broke
+    """
+    kind, payload = prepare_scan(message, rules)
+
+    def gen():
+        if kind in ("reply", "error"):
+            yield json.dumps(payload) + "\n"
+            return
+        yield json.dumps({"meta": payload["extra"]}) + "\n"
+        try:
+            client = get_groq_client()
+            stream = client.chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": payload["system_prompt"]},
+                    {"role": "user", "content": payload["analysis_text"]},
+                ],
+                temperature=0.4,
+                max_tokens=700,
+                stream=True,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if delta:
+                    yield json.dumps({"delta": delta}) + "\n"
+        except Exception as e:
+            # LLM down/rate-limited: still deliver the computed analysis instead of breaking
+            yield json.dumps(
+                {
+                    "delta": "groq is not cooperating right now "
+                    f"({e}), so here's the raw scan instead:\n\n{payload['analysis_text']}"
+                }
+            ) + "\n"
+
+    return Response(stream_with_context(gen()), mimetype="application/x-ndjson")
 
 
 def llm_reply(system_prompt, analysis_text, extra):
@@ -1547,6 +1613,8 @@ def chat():
     if not message:
         return jsonify({"error": "Send a JSON body with a 'message' field."}), 400
 
+    if data.get("stream"):
+        return run_scan_stream(message, data.get("rules"))
     return run_scan(message, data.get("rules"))
 
 
@@ -1561,6 +1629,8 @@ def scan():
     if not message:
         return _cors(jsonify({"error": "Send a JSON body with a 'message' field."})), 400
 
+    if data.get("stream"):
+        return _cors(run_scan_stream(message, data.get("rules")))
     response = run_scan(message, data.get("rules"))
     # run_scan may return (response, status) or just a response
     if isinstance(response, tuple):

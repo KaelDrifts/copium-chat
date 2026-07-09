@@ -169,17 +169,54 @@
         const res = await fetch("/api/scan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: query }),
+          body: JSON.stringify({ message: query, stream: true }),
         });
-        const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error || "scan failed");
 
-        status.hidden = true;
-        result.textContent = data.reply;
-        result.hidden = false;
+        let meta = null;
+        let reply = "";
+        const show = () => {
+          status.hidden = true;
+          result.textContent = reply;
+          result.hidden = false;
+        };
 
-        const text = typeof data.hoopium_score === "number"
-          ? "HOOPIUM scan: " + data.hoopium_score + "/100 — RISK: " + data.risk_level + " · "
+        const ctype = res.headers.get("content-type") || "";
+        if (ctype.includes("ndjson")) {
+          // stream the report as it's written
+          const handleLine = (line) => {
+            if (!line.trim()) return;
+            let obj;
+            try { obj = JSON.parse(line); } catch (e) { return; }
+            if (obj.error) throw new Error(obj.error);
+            if (obj.meta) meta = obj.meta;
+            if (obj.reply) { reply += obj.reply; show(); }
+            if (obj.delta) { reply += obj.delta; show(); }
+          };
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            let nl;
+            while ((nl = buf.indexOf("\n")) >= 0) {
+              handleLine(buf.slice(0, nl));
+              buf = buf.slice(nl + 1);
+            }
+          }
+          handleLine(buf);
+        } else {
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error || "scan failed");
+          meta = data;
+          reply = data.reply;
+          show();
+        }
+
+        const score = meta && typeof meta.hoopium_score === "number" ? meta.hoopium_score : null;
+        const text = score !== null
+          ? "HOOPIUM scan: " + score + "/100 — RISK: " + meta.risk_level + " · "
           : "HOOPIUM X account history check of " + query + " · ";
         document.getElementById("share-x").href =
           "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text + location.href);
@@ -194,7 +231,7 @@
           } catch (e) {}
         });
 
-        if (isCa && typeof data.hoopium_score === "number") {
+        if (isCa && score !== null) {
           document.getElementById("badge-img").src = "/badge/" + query + ".svg";
           document.getElementById("badge-row").hidden = false;
         }
