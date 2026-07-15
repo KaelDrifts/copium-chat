@@ -436,6 +436,141 @@
 
     .rule-add button:hover { background: var(--green); color: #000; }
 
+    /* ---------- SETUPS ---------- */
+    .setups-block {
+      margin-top: 14px;
+      border-top: 1px dashed var(--green-dim);
+      padding-top: 4px;
+    }
+
+    .setup-create {
+      background: transparent;
+      border: 1px solid var(--amber);
+      color: var(--amber);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .setup-create:hover { background: var(--amber); color: #000; }
+
+    .setup-row { padding: 4px 0; font-size: 12px; }
+
+    .setup-row .setup-head { display: flex; align-items: center; gap: 8px; }
+
+    .setup-row .setup-name {
+      background: transparent;
+      border: none;
+      color: var(--amber);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .setup-row .setup-name:hover { text-shadow: 0 0 6px var(--amber); }
+
+    .setup-row .setup-meta { color: var(--green-dim); }
+
+    .setup-row .setup-btn {
+      background: transparent;
+      border: none;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .setup-row .setup-edit { color: var(--green); }
+    .setup-row .setup-onoff { color: var(--green); }
+    .setup-row .setup-onoff.off { color: var(--green-dim); }
+    .setup-row .setup-del { color: var(--red); }
+
+    .setup-row .setup-conds { padding: 4px 0 2px 22px; color: #b8ffb8; }
+    .setup-row .setup-conds div::before { content: "· "; color: var(--green-dim); }
+
+    .setup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .setup-overlay[hidden] { display: none; }
+
+    .setup-modal {
+      width: 100%;
+      max-width: 560px;
+      border: 1px solid var(--green);
+      box-shadow: 0 0 18px rgba(51, 255, 51, 0.3);
+      background: var(--bg);
+    }
+
+    .setup-close {
+      background: transparent;
+      border: none;
+      color: var(--red);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .setup-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .setup-label { color: var(--green-dim); font-size: 12px; }
+
+    .setup-body input[type="text"], .setup-body textarea {
+      background: #000;
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 6px 8px;
+      outline: none;
+      resize: vertical;
+    }
+
+    .setup-body input[type="text"]:focus, .setup-body textarea:focus { border-color: var(--green); }
+
+    .setup-generate, .setup-actions button {
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 6px 10px;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+
+    .setup-generate:hover, .setup-actions button:hover { background: var(--green); color: #000; }
+
+    .setup-generate:disabled { opacity: 0.4; cursor: wait; }
+
+    .setup-actions button { border-color: var(--amber); color: var(--amber); }
+    .setup-actions button:hover { background: var(--amber); color: #000; }
+
+    .setup-ai { font-size: 12px; line-height: 1.7; color: var(--green-dim); }
+    .setup-ai .ai-tag { color: var(--amber); }
+    .setup-ai .ai-ok { color: var(--green); }
+
+    .setup-conditions { font-size: 12px; color: #b8ffb8; line-height: 1.7; }
+    .setup-conditions div::before { content: "✓ "; color: var(--green); }
+
     /* ---------- EXTENSION SECTION ---------- */
     .ext-hero { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
 
@@ -754,18 +889,15 @@
           <input id="rule-value" type="number" step="any" placeholder="value" />
           <button id="rule-add-btn">add rule</button>
         </div>
-        <div class="rule-add rule-code">
-          <input id="rule-expr" type="text" maxlength="200"
-                 placeholder="or code your own in python: liquidity_usd / market_cap_usd > 0.05 and total_holders > 300" />
-          <button id="rule-expr-btn">add coded rule</button>
+        <div class="setups-block">
+          <p class="rules-hint">
+            or go further — describe your criteria in plain english and the AI compiles them
+            into a <span class="hl">setup</span>: a named set of conditions a coin must comply
+            with to be tradable or get a score. edit it anytime.
+          </p>
+          <div id="setups-list"></div>
+          <button id="setup-create-btn" class="setup-create">[+] create your own setup</button>
         </div>
-        <p class="rules-hint">
-          coded rules are written in Python: numbers, + - * / %, comparisons (including chained, e.g.
-          100000 &lt;= market_cap_usd &lt;= 1000000), and/or/not, parentheses, and these variables:
-          hoopium_score, market_cap_usd, liquidity_usd, liquidity_to_mcap_pct, volume_24h_usd,
-          price_usd, price_change_24h_pct, pair_age_days, top10_holders_pct, total_holders,
-          rugcheck_score, bonding_curve_pct, mint_renounced, freeze_renounced.
-        </p>
       </div>
     </div>
   </section>
@@ -808,6 +940,32 @@
 └──────────────────────────────┘</pre>
     </div>
   </section>
+
+  <div id="setup-overlay" class="setup-overlay" hidden>
+    <div class="setup-modal">
+      <div class="titlebar">
+        <span id="setup-modal-title">HOOPIUM — setup builder</span>
+        <button id="setup-close" class="setup-close" title="close">[x]</button>
+      </div>
+      <div class="setup-body">
+        <label class="setup-label" for="setup-name">setup name</label>
+        <input id="setup-name" type="text" maxlength="40" autocomplete="off"
+               placeholder="e.g. degen scalp, safe entries, fresh launches..." />
+        <label class="setup-label" for="setup-desc">describe your rules to the AI</label>
+        <textarea id="setup-desc" rows="4" maxlength="600"
+                  placeholder="e.g. I only want coins with at least $50k liquidity, more than 500 holders, top 10 wallets under 25%, mint renounced and a hoopium score above 60..."></textarea>
+        <button id="setup-generate" class="setup-generate">&gt; generate setup</button>
+        <div id="setup-ai" class="setup-ai" hidden></div>
+        <div id="setup-result" hidden>
+          <p class="setup-label">compiled conditions</p>
+          <div id="setup-conditions" class="setup-conditions"></div>
+          <div class="setup-actions">
+            <button id="setup-save">save setup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <footer>
     <p><span class="nfa">⚠ NOT FINANCIAL ADVICE.</span> HOOPIUM's reports and gut takes are automated heuristics, nothing else.</p>
@@ -1223,19 +1381,235 @@
       saveRules();
     });
 
-    const ruleExpr = document.getElementById("rule-expr");
-    document.getElementById("rule-expr-btn").addEventListener("click", () => {
-      const expr = ruleExpr.value.trim();
-      if (!expr) { ruleExpr.focus(); return; }
-      rules.push({ expr });
-      ruleExpr.value = "";
-      saveRules();
-    });
-    ruleExpr.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") document.getElementById("rule-expr-btn").click();
+    renderRules();
+
+    // ---------- setups: describe your rules to the AI, it compiles a setup ----------
+    // NOTE: visual prototype only — the "AI" is a local keyword parser, nothing is
+    // sent anywhere and setups are never evaluated against scans (yet).
+    const setupsList = document.getElementById("setups-list");
+    const setupOverlay = document.getElementById("setup-overlay");
+    const setupModalTitle = document.getElementById("setup-modal-title");
+    const setupName = document.getElementById("setup-name");
+    const setupDesc = document.getElementById("setup-desc");
+    const setupGenerate = document.getElementById("setup-generate");
+    const setupAi = document.getElementById("setup-ai");
+    const setupResult = document.getElementById("setup-result");
+    const setupConditions = document.getElementById("setup-conditions");
+
+    let setups = [];
+    try { setups = JSON.parse(localStorage.getItem("hoopium_setups")) || []; } catch (e) {}
+    let editingSetup = -1;       // index into setups, -1 = creating a new one
+    let draftConditions = [];    // conditions produced by the last generate
+
+    function saveSetups() {
+      localStorage.setItem("hoopium_setups", JSON.stringify(setups));
+      renderSetups();
+    }
+
+    function renderSetups() {
+      setupsList.innerHTML = "";
+      setups.forEach((s, i) => {
+        const row = document.createElement("div");
+        row.className = "setup-row";
+        const head = document.createElement("div");
+        head.className = "setup-head";
+
+        const del = document.createElement("button");
+        del.className = "setup-btn setup-del";
+        del.textContent = "[x]";
+        del.title = "delete setup";
+        del.addEventListener("click", () => { setups.splice(i, 1); saveSetups(); });
+
+        const onoff = document.createElement("button");
+        onoff.className = "setup-btn setup-onoff" + (s.on ? "" : " off");
+        onoff.textContent = s.on ? "[on]" : "[off]";
+        onoff.title = "toggle setup";
+        onoff.addEventListener("click", () => { s.on = !s.on; saveSetups(); });
+
+        const edit = document.createElement("button");
+        edit.className = "setup-btn setup-edit";
+        edit.textContent = "[edit]";
+        edit.title = "edit setup";
+        edit.addEventListener("click", () => openSetupModal(i));
+
+        const name = document.createElement("button");
+        name.className = "setup-name";
+        name.textContent = "⚙ " + s.name;
+        name.title = "show conditions";
+
+        const meta = document.createElement("span");
+        meta.className = "setup-meta";
+        meta.textContent = `— ${s.conditions.length} conditions`;
+
+        head.append(del, onoff, edit, name, meta);
+        row.appendChild(head);
+
+        const conds = document.createElement("div");
+        conds.className = "setup-conds";
+        conds.hidden = true;
+        s.conditions.forEach((c) => {
+          const line = document.createElement("div");
+          line.textContent = c;
+          conds.appendChild(line);
+        });
+        row.appendChild(conds);
+        name.addEventListener("click", () => { conds.hidden = !conds.hidden; });
+
+        setupsList.appendChild(row);
+      });
+    }
+
+    // the "AI": splits the description into clauses, matches known metrics and the
+    // number/direction words in the same clause, falls back to sane defaults
+    function compileSetup(desc) {
+      const conds = [];
+      const seen = new Set();
+      const money = (v) => "$" + Math.round(v).toLocaleString("en-US");
+      const clamp = (v, lo, hi) => (v == null || v < lo || v > hi ? null : v);
+
+      const metrics = [
+        ["top10", /top\s?(?:10|ten)\s*(?:wallets?|holders?)?|whales?/,
+          (v, op) => `top 10 holders ${op("<=")} ${clamp(v, 1, 100) ?? 25}%`],
+        ["liq", /liquidity|\bliq\b/,
+          (v, op) => `liquidity ${op(">=")} ${money(clamp(v, 100, 1e9) ?? 25000)}`],
+        ["mcap", /market\s?cap|mcap/,
+          (v, op) => `market cap ${op(">=")} ${money(clamp(v, 1000, 1e10) ?? 100000)}`],
+        ["vol", /volume/,
+          (v, op) => `24h volume ${op(">=")} ${money(clamp(v, 100, 1e9) ?? 50000)}`],
+        ["holders", /holders?/,
+          (v, op) => `total holders ${op(">=")} ${clamp(v, 1, 1e7) ?? 500}`],
+        ["age", /\bage\b|days? old|fresh|new launch|launched/,
+          (v, op) => `pair age ${op(">=")} ${clamp(v, 0, 365) ?? 2} days`],
+        ["rug", /rugcheck(?:\s*score)?/,
+          (v, op) => `rugcheck score ${op(">=")} ${clamp(v, 1, 100) ?? 70}`],
+        ["bonding", /bonding(?:\s*curve)?/,
+          (v, op) => `bonding curve ${op(">=")} ${clamp(v, 1, 100) ?? 80}%`],
+        ["score", /score/,
+          (v, op) => `hoopium score ${op(">=")} ${clamp(v, 1, 100) ?? 60}`],
+      ];
+
+      // "50,000" -> "50000" first, so thousands separators don't split clauses
+      const cleaned = desc.toLowerCase().replace(/(\d),(\d{3})\b/g, "$1$2");
+      cleaned.split(/[,.;\n]|\band\b|\bwith\b/).forEach((clause) => {
+        let c = clause;
+        const op = (def) => {
+          if (/under|below|less|max|at most|no more|younger/.test(c)) return "<=";
+          if (/over|above|more|min|at least|older|\d\s*\+/.test(c)) return ">=";
+          return def;
+        };
+        for (const [key, re, make] of metrics) {
+          if (seen.has(key) || !re.test(c)) continue;
+          seen.add(key);
+          c = c.replace(re, " ");
+          const n = c.match(/\$?\s*(\d+(?:[.,]\d+)?)\s*([km])?\b/i);
+          let val = null;
+          if (n) {
+            val = parseFloat(n[1].replace(",", "."));
+            if (n[2]) val *= n[2].toLowerCase() === "k" ? 1e3 : 1e6;
+          }
+          conds.push(make(val, op));
+        }
+        if (/mint/.test(c) && !seen.has("mint")) { seen.add("mint"); conds.push("mint authority renounced"); }
+        if (/freeze/.test(c) && !seen.has("freeze")) { seen.add("freeze"); conds.push("freeze authority renounced"); }
+      });
+
+      // never come back empty-handed, ser
+      if (conds.length < 3) {
+        const filler = [
+          "hoopium score >= 60",
+          "liquidity >= $20,000",
+          "top 10 holders <= 30%",
+          "mint authority renounced",
+        ];
+        filler.forEach((f) => {
+          if (conds.length < 4 && !conds.some((c) => c.split(" ")[0] === f.split(" ")[0])) conds.push(f);
+        });
+      }
+      return conds;
+    }
+
+    function openSetupModal(index) {
+      editingSetup = index;
+      const s = index >= 0 ? setups[index] : null;
+      setupModalTitle.textContent = s ? "HOOPIUM — edit setup" : "HOOPIUM — setup builder";
+      setupName.value = s ? s.name : "";
+      setupDesc.value = s ? s.desc : "";
+      setupAi.hidden = true;
+      setupAi.innerHTML = "";
+      draftConditions = s ? s.conditions.slice() : [];
+      setupConditions.innerHTML = "";
+      draftConditions.forEach((c) => {
+        const line = document.createElement("div");
+        line.textContent = c;
+        setupConditions.appendChild(line);
+      });
+      setupResult.hidden = !s;
+      setupOverlay.hidden = false;
+      setupName.focus();
+    }
+
+    function closeSetupModal() { setupOverlay.hidden = true; }
+
+    document.getElementById("setup-create-btn").addEventListener("click", () => openSetupModal(-1));
+    document.getElementById("setup-close").addEventListener("click", closeSetupModal);
+    setupOverlay.addEventListener("click", (e) => { if (e.target === setupOverlay) closeSetupModal(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !setupOverlay.hidden) closeSetupModal();
     });
 
-    renderRules();
+    setupGenerate.addEventListener("click", () => {
+      if (!setupName.value.trim()) { setupName.focus(); return; }
+      if (!setupDesc.value.trim()) { setupDesc.focus(); return; }
+      setupGenerate.disabled = true;
+      setupResult.hidden = true;
+      setupAi.hidden = false;
+      setupAi.innerHTML = "";
+
+      const conds = compileSetup(setupDesc.value);
+      const steps = [
+        "parsing description...",
+        "mapping to on-chain metrics...",
+        "resolving thresholds...",
+        `compiling ${conds.length} conditions...`,
+        `setup "${setupName.value.trim()}" ready ✓`,
+      ];
+      let i = 0;
+      (function tick() {
+        const line = document.createElement("div");
+        const tag = document.createElement("span");
+        tag.className = "ai-tag";
+        tag.textContent = "[AI]";
+        const txt = document.createElement("span");
+        if (i === steps.length - 1) txt.className = "ai-ok";
+        txt.textContent = " " + steps[i];
+        line.append(tag, txt);
+        setupAi.appendChild(line);
+        i++;
+        if (i < steps.length) { setTimeout(tick, 420 + Math.random() * 380); return; }
+        draftConditions = conds;
+        setupConditions.innerHTML = "";
+        conds.forEach((c) => {
+          const row = document.createElement("div");
+          row.textContent = c;
+          setupConditions.appendChild(row);
+        });
+        setupResult.hidden = false;
+        setupGenerate.disabled = false;
+      })();
+    });
+
+    document.getElementById("setup-save").addEventListener("click", () => {
+      const name = setupName.value.trim();
+      if (!name) { setupName.focus(); return; }
+      if (!draftConditions.length) { setupGenerate.click(); return; }
+      const s = { name, desc: setupDesc.value.trim(), conditions: draftConditions, on: true };
+      if (editingSetup >= 0) { s.on = setups[editingSetup].on; setups[editingSetup] = s; }
+      else setups.push(s);
+      saveSetups();
+      closeSetupModal();
+    });
+
+    renderSetups();
 
     // ---------- interactive home: typewriter, scroll reveal, live meta ticker ----------
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

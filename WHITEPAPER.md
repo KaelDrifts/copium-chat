@@ -65,15 +65,18 @@ Two or more hard red flags cap the score at 35; one caps it at 65 — the number
 
 The score is HOOPIUM's opinion. The second verdict is **yours**.
 
-Users define their own buy rules over every scanned metric — market cap, liquidity, liquidity/mcap ratio, volume, pair age, holder concentration, total holders, bonding curve progress, the HOOPIUM score itself, authority status — either with a simple *metric / operator / threshold* builder, or by **coding a rule directly as a Python expression**:
+Users define their own buy rules over every scanned metric — market cap, liquidity, liquidity/mcap ratio, volume, pair age, holder concentration, total holders, bonding curve progress, the HOOPIUM score itself, authority status — either with a simple *metric / operator / threshold* builder, or by **describing their criteria in plain english and letting the AI compile them into a setup**: a named set of conditions a coin must comply with to be tradable or get a score.
 
 ```
-liquidity_usd / market_cap_usd > 0.05 and total_holders > 300
-100000 <= market_cap_usd <= 5000000
-not (top10_holders_pct > 40) or hoopium_score >= 80
+> "at least $50k liquidity, 500+ holders, top 10 under 25%, mint renounced"
+⚙ degen scalp — 4 conditions
+  ✓ liquidity >= $50,000
+  ✓ total holders >= 500
+  ✓ top 10 holders <= 25%
+  ✓ mint authority renounced
 ```
 
-Rules are stored client-side and evaluated on every scan, producing an instant **WOULD BUY / WOULD NOT BUY** verdict before the report even renders. Coded rules run through a whitelisted AST evaluator — no `eval`, no function calls, no attribute access — so a malformed or malicious expression simply returns INVALID. Rules that reference unavailable data return UNKNOWN and never count as passing: missing information is treated as risk, not as a pass.
+Setups are named, editable and can be toggled on and off at any time. Rules and setups are stored client-side and evaluated on every scan, producing an instant **WOULD BUY / WOULD NOT BUY** verdict before the report even renders. Conditions that reference unavailable data return UNKNOWN and never count as passing: missing information is treated as risk, not as a pass.
 
 ## The report
 

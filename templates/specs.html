@@ -218,24 +218,25 @@
     </p>
     <ul>
       <li><span class="hl">simple</span>: pick a metric, an operator (<code>&gt;= &lt;= &gt; &lt; ==</code>) and a value</li>
-      <li><span class="hl">coded in Python</span>: free-form expressions over the same metrics</li>
+      <li><span class="hl">setups</span>: describe your criteria in plain english and the AI compiles them into a named set of conditions the coin must comply with to be tradable or get a score</li>
     </ul>
-    <pre class="code">liquidity_usd / market_cap_usd &gt; 0.05 and total_holders &gt; 300
-100000 &lt;= market_cap_usd &lt;= 5000000
-not (top10_holders_pct &gt; 40) or hoopium_score &gt;= 80</pre>
+    <pre class="code">&gt; "at least $50k liquidity, 500+ holders, top 10 under 25%, mint renounced"
+⚙ degen scalp — 4 conditions
+  ✓ liquidity &gt;= $50,000
+  ✓ total holders &gt;= 500
+  ✓ top 10 holders &lt;= 25%
+  ✓ mint authority renounced</pre>
     <p>
-      Available variables: <code>hoopium_score</code>, <code>market_cap_usd</code>,
-      <code>liquidity_usd</code>, <code>liquidity_to_mcap_pct</code>, <code>volume_24h_usd</code>,
-      <code>price_usd</code>, <code>price_change_24h_pct</code>, <code>pair_age_days</code>,
-      <code>top10_holders_pct</code>, <code>total_holders</code>, <code>rugcheck_score</code>,
-      <code>bonding_curve_pct</code>, <code>mint_renounced</code>, <code>freeze_renounced</code>.
+      Conditions can reference any scanned metric: hoopium score, market cap, liquidity,
+      liquidity/mcap ratio, 24h volume, price and 24h change, pair age, top-10 holder
+      concentration, total holders, rugcheck score, bonding curve progress, and mint &amp;
+      freeze authority status.
     </p>
     <p>
-      Coded rules run through a whitelisted AST evaluator — no <code>eval</code>, no function
-      calls, no attribute access. A broken expression returns INVALID; a rule referencing
-      missing data returns UNKNOWN. Neither counts as passing: missing information is treated
-      as risk, not as a pass. Rules are saved in your browser and work identically in the web
-      terminal and the extension popup.
+      Name a setup once, describe it once — then edit, toggle or delete it anytime from the
+      panel. A condition referencing missing data returns UNKNOWN and never counts as passing:
+      missing information is treated as risk, not as a pass. Rules and setups are saved in
+      your browser.
     </p>
 
     <h2>chrome extension</h2>

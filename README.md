@@ -35,18 +35,21 @@ scan, giving you an instant **WOULD BUY / WOULD NOT BUY** verdict by your own cr
 before the report, next to the HOOPIUM score. Rules with missing data come back as UNKNOWN and
 count as not passing.
 
-You can also **code your own rule** as a free-form Python expression combining any of those metrics:
+You can also **create your own setup**: describe your criteria in plain english and the AI
+compiles them into a named set of conditions the coin must comply with to be tradable or
+get a score:
 
 ```
-liquidity_usd / market_cap_usd > 0.05 and total_holders > 300
-100000 <= market_cap_usd <= 5000000
-not (top10_holders_pct > 40) or hoopium_score >= 80
+> "at least $50k liquidity, 500+ holders, top 10 under 25%, mint renounced"
+⚙ degen scalp — 4 conditions
+  ✓ liquidity >= $50,000
+  ✓ total holders >= 500
+  ✓ top 10 holders <= 25%
+  ✓ mint authority renounced
 ```
 
-Expressions are written in Python syntax: numbers, `+ - * / %`, comparisons (including chained),
-`and / or / not` and parentheses. They're evaluated server-side with a whitelisted AST parser (no `eval`, no
-function calls, no attribute access), so a broken or malicious expression just comes back as
-INVALID instead of doing anything.
+Setups get a name, can be edited or toggled on/off anytime from the panel, and are saved in
+your browser alongside your simple rules.
 
 ## 1. Get a free API key
 
