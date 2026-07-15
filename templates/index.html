@@ -121,6 +121,35 @@
     @media (prefers-reduced-motion: no-preference) {
       .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
       .reveal.visible { opacity: 1; transform: none; }
+
+      /* cards power on one after another */
+      .features .card:nth-child(2) { transition-delay: 0.09s; }
+      .features .card:nth-child(3) { transition-delay: 0.18s; }
+      .features .card:nth-child(4) { transition-delay: 0.27s; }
+      .features .card:nth-child(5) { transition-delay: 0.36s; }
+      .features .card:nth-child(6) { transition-delay: 0.45s; }
+
+      /* the extension mock switches on like a CRT when it scrolls into view */
+      .ext-mock.reveal.visible { animation: crt-on 0.6s ease-out; }
+    }
+
+    /* section titles type themselves on first reveal */
+    .section-title.typing::after {
+      content: "▌";
+      animation: blink 1.1s steps(1) infinite;
+    }
+
+    /* thin scroll progress beam above everything */
+    #scroll-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 2px;
+      width: 0;
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+      z-index: 1001;
+      pointer-events: none;
     }
 
     .card { transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
@@ -1476,20 +1505,51 @@
       hero.addEventListener("mouseleave", () => { logo.style.transform = ""; });
     })();
 
-    // sections and cards fade in as you scroll
+    // sections and cards fade in as you scroll; section titles type themselves
+    function typeTitle(title) {
+      if (title.dataset.typed) return;
+      title.dataset.typed = "1";
+      const full = title.textContent;
+      title.textContent = "";
+      title.classList.add("typing");
+      let i = 0;
+      (function step() {
+        title.textContent = full.slice(0, ++i);
+        if (i < full.length) setTimeout(step, 32);
+        else title.classList.remove("typing");
+      })();
+    }
+
     if (!reducedMotion && "IntersectionObserver" in window) {
       const io = new IntersectionObserver((entries) => {
         entries.forEach((e) => {
           if (e.isIntersecting) {
             e.target.classList.add("visible");
+            const title = e.target.querySelector(":scope > .section-title");
+            if (title) typeTitle(title);
             io.unobserve(e.target);
           }
         });
       }, { threshold: 0.12 });
-      document.querySelectorAll("section, .card, footer").forEach((el) => {
+      document.querySelectorAll("section, .card, footer, .ext-mock").forEach((el) => {
         el.classList.add("reveal");
         io.observe(el);
       });
+
+      // scroll progress beam
+      const progress = document.createElement("div");
+      progress.id = "scroll-progress";
+      document.body.appendChild(progress);
+      let progressTick = false;
+      window.addEventListener("scroll", () => {
+        if (progressTick) return;
+        progressTick = true;
+        requestAnimationFrame(() => {
+          const max = document.documentElement.scrollHeight - window.innerHeight;
+          progress.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + "%";
+          progressTick = false;
+        });
+      }, { passive: true });
     }
 
     // live meta ticker: what's trending on pump.fun right now, click to scan
