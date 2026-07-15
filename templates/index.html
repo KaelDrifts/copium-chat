@@ -385,6 +385,7 @@
 
     /* ---------- TERMINAL LAUNCHER + FULLSCREEN APP ---------- */
     .term-launch { display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }
+    .term-launch[hidden] { display: none; }
 
     .term-launch-icon {
       color: var(--green-dim);
@@ -397,31 +398,6 @@
     .term-launch-copy p { line-height: 1.8; font-size: 15px; color: #b8ffb8; margin-bottom: 18px; }
     .term-launch-copy .hl { color: var(--amber); }
 
-    #term-app {
-      position: fixed;
-      inset: 0;
-      z-index: 500; /* above the sticky nav (100), below the scanlines overlay (999) */
-      background: #000;
-      overflow-y: auto;
-      padding: 20px 16px;
-    }
-
-    #term-app[hidden] { display: none; }
-
-    .term-boot {
-      max-width: 720px;
-      margin: 10vh auto 0;
-      font-size: 14px;
-      line-height: 2;
-      color: var(--green);
-      text-shadow: 0 0 6px rgba(51, 255, 51, 0.4);
-    }
-
-    .term-boot .ok { color: var(--green-dim); text-shadow: none; }
-
-    .term-shell { max-width: 880px; margin: 0 auto; }
-    .term-shell .terminal { height: calc(100vh - 200px); min-height: 360px; }
-
     .term-shell.crt-on { animation: crt-on 0.6s ease-out; }
     @keyframes crt-on {
       0% { transform: scale(1, 0.008); filter: brightness(6); }
@@ -430,19 +406,7 @@
       100% { transform: scale(1); filter: brightness(1); }
     }
 
-    .titlebar-right { display: flex; gap: 12px; align-items: center; }
-
-    .term-exit {
-      background: transparent;
-      border: none;
-      color: var(--red);
-      font-family: inherit;
-      font-size: 13px;
-      cursor: pointer;
-      padding: 0;
-    }
-
-    .term-exit:hover { text-shadow: 0 0 6px var(--red); }
+    .msg.bootline { color: var(--green-dim); }
 
     /* ---------- SETUPS ---------- */
     .setup-create {
@@ -501,7 +465,7 @@
       align-items: center;
       justify-content: center;
       padding: 16px;
-      z-index: 600; /* above the fullscreen terminal */
+      z-index: 200; /* above the sticky nav */
     }
 
     .setup-overlay[hidden] { display: none; }
@@ -840,7 +804,7 @@
 
   <section id="chat-section">
     <h2 class="section-title">./hoopium --interactive</h2>
-    <div class="term-launch">
+    <div id="term-launch" class="term-launch">
       <pre class="term-launch-icon" aria-hidden="true">
 ┌────────────────────┐
 │ $ ./hoopium       ▲│
@@ -849,11 +813,40 @@
 └────────────────────┘</pre>
       <div class="term-launch-copy">
         <p>
-          The scanner runs in its own <span class="hl">full-screen terminal</span>, outside
-          the page — no website, no distractions, just you, the CRT and the trenches. Your
-          setups ride along.
+          The scanner is one keystroke away — boot it up right here, CRT and all.
+          Paste a CA, get the truth. Your setups ride along.
         </p>
         <button id="term-launch-btn" class="btn">&gt; launch terminal<span class="blink">_</span></button>
+      </div>
+    </div>
+
+    <div id="term-shell" class="term-shell" hidden>
+      <div class="terminal">
+        <div class="titlebar">
+          <span>HOOPIUM v2.0 — solana token scanner</span>
+          <span class="dots">[●●●]</span>
+        </div>
+        <div id="chat"></div>
+        <div class="inputbar">
+          <span class="prompt-char">&gt;</span>
+          <input id="input" type="text" autocomplete="off" placeholder="paste a solana token CA or an @username, ser..." />
+          <button id="send">send</button>
+        </div>
+      </div>
+
+      <div class="rules-panel">
+        <button id="rules-toggle" class="rules-toggle">[+] my buy rules<span id="rules-count"></span></button>
+        <div id="rules-body" hidden>
+          <p class="rules-hint">
+            describe your criteria in plain english and the AI compiles them into a
+            <span class="hl">setup</span>: a named set of conditions a coin must comply with
+            to be tradable or get a score. every scan checks your active setups and gives you
+            an instant WOULD BUY / WOULD NOT BUY verdict on top of the HOOPIUM score.
+            saved in this browser, editable anytime.
+          </p>
+          <div id="setups-list"></div>
+          <button id="setup-create-btn" class="setup-create">[+] create your own setup</button>
+        </div>
       </div>
     </div>
   </section>
@@ -896,41 +889,6 @@
 └──────────────────────────────┘</pre>
     </div>
   </section>
-
-  <div id="term-app" hidden>
-    <div id="term-boot" class="term-boot"></div>
-    <div id="term-shell" class="term-shell" hidden>
-      <div class="terminal">
-        <div class="titlebar">
-          <span>HOOPIUM v2.0 — solana token scanner</span>
-          <span class="titlebar-right"><span class="dots">[●●●]</span><button id="term-exit" class="term-exit" title="exit terminal (esc)">[exit]</button></span>
-        </div>
-        <div id="chat">
-          <div class="msg bot"><span class="tag">[HOOPIUM]</span> gm ser. paste any solana token CA and I'll check it for rug vibes — or drop an @username and I'll dig up that X account's history. type help for all commands.</div>
-        </div>
-        <div class="inputbar">
-          <span class="prompt-char">&gt;</span>
-          <input id="input" type="text" autocomplete="off" placeholder="paste a solana token CA or an @username, ser..." />
-          <button id="send">send</button>
-        </div>
-      </div>
-
-      <div class="rules-panel">
-        <button id="rules-toggle" class="rules-toggle">[+] my buy rules<span id="rules-count"></span></button>
-        <div id="rules-body" hidden>
-          <p class="rules-hint">
-            describe your criteria in plain english and the AI compiles them into a
-            <span class="hl">setup</span>: a named set of conditions a coin must comply with
-            to be tradable or get a score. every scan checks your active setups and gives you
-            an instant WOULD BUY / WOULD NOT BUY verdict on top of the HOOPIUM score.
-            saved in this browser, editable anytime.
-          </p>
-          <div id="setups-list"></div>
-          <button id="setup-create-btn" class="setup-create">[+] create your own setup</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <div id="setup-overlay" class="setup-overlay" hidden>
     <div class="setup-modal">
@@ -1395,9 +1353,7 @@
     document.getElementById("setup-close").addEventListener("click", closeSetupModal);
     setupOverlay.addEventListener("click", (e) => { if (e.target === setupOverlay) closeSetupModal(); });
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape") return;
-      if (!setupOverlay.hidden) closeSetupModal();
-      else if (!termApp.hidden) closeTerminal();
+      if (e.key === "Escape" && !setupOverlay.hidden) closeSetupModal();
     });
 
     setupGenerate.addEventListener("click", () => {
@@ -1454,44 +1410,38 @@
 
     renderSetups();
 
-    // ---------- fullscreen terminal app: launched from the site, boots like a machine ----------
-    const termApp = document.getElementById("term-app");
-    const termBoot = document.getElementById("term-boot");
+    // ---------- terminal boot: embedded in the page, powers on with a CRT animation ----------
+    const termLaunch = document.getElementById("term-launch");
     const termShell = document.getElementById("term-shell");
-    let termBooted = false; // boot sequence plays once per page load, instant after
-
-    function revealShell() {
-      termBoot.hidden = true;
-      termShell.hidden = false;
-      termShell.classList.remove("crt-on");
-      void termShell.offsetWidth; // restart the CRT animation
-      termShell.classList.add("crt-on");
-      input.focus();
-    }
+    let termLaunched = false;
+    const WELCOME = "gm ser. paste any solana token CA and I'll check it for rug vibes — " +
+      "or drop an @username and I'll dig up that X account's history. type help for all commands.";
 
     function openTerminal() {
-      termApp.hidden = false;
-      document.body.style.overflow = "hidden";
-      if (termBooted || reducedMotion) {
-        termBoot.hidden = true;
-        termShell.hidden = false;
-        input.focus();
+      if (termLaunched) return;
+      termLaunched = true;
+      termLaunch.hidden = true;
+      termShell.hidden = false;
+
+      if (reducedMotion) {
+        addMessage("bot", WELCOME);
+        input.focus({ preventScroll: true });
         return;
       }
-      termBooted = true;
-      termShell.hidden = true;
-      termBoot.hidden = false;
-      termBoot.innerHTML = "";
+
+      termShell.classList.add("crt-on");
+      input.disabled = true;
+      sendBtn.disabled = true;
 
       const cmdLine = document.createElement("div");
-      termBoot.appendChild(cmdLine);
+      cmdLine.className = "msg bootline";
+      chat.appendChild(cmdLine);
       const cmd = "$ ./hoopium --interactive";
       const bootLines = [
         "[ ok ] tty attached — CRT mode",
         "[ ok ] rug pattern-recognition models loaded",
         "[ ok ] dexscreener / rugcheck / pump.fun links up",
         "[ ok ] meta radar streaming",
-        "entering the trenches...",
       ];
       let ci = 0;
       (function typeChar() {
@@ -1500,29 +1450,29 @@
         if (ci < cmd.length) { setTimeout(typeChar, 26); return; }
         let li = 0;
         (function nextLine() {
-          if (li >= bootLines.length) { setTimeout(revealShell, 380); return; }
-          const div = document.createElement("div");
-          if (bootLines[li].startsWith("[ ok ]")) div.className = "ok";
-          div.textContent = bootLines[li++];
-          termBoot.appendChild(div);
-          setTimeout(nextLine, 160 + Math.random() * 220);
+          if (li < bootLines.length) {
+            const div = document.createElement("div");
+            div.className = "msg bootline";
+            div.textContent = bootLines[li++];
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+            setTimeout(nextLine, 170 + Math.random() * 220);
+            return;
+          }
+          setTimeout(() => {
+            addMessage("bot", WELCOME);
+            input.disabled = false;
+            sendBtn.disabled = false;
+            input.focus({ preventScroll: true });
+          }, 320);
         })();
       })();
     }
 
-    function closeTerminal() {
-      termApp.hidden = true;
-      document.body.style.overflow = "";
-    }
-
     document.getElementById("term-launch-btn").addEventListener("click", openTerminal);
-    document.getElementById("term-exit").addEventListener("click", closeTerminal);
-    // every "terminal" link on the page launches the app instead of scrolling
+    // "terminal" links scroll to the section; boot the terminal on the way there
     document.querySelectorAll('a[href="#chat-section"]').forEach((a) => {
-      a.addEventListener("click", (e) => {
-        e.preventDefault();
-        openTerminal();
-      });
+      a.addEventListener("click", () => openTerminal());
     });
 
     // ---------- interactive home: typewriter, scroll reveal, live meta ticker ----------
@@ -1568,8 +1518,9 @@
 
     function scanFromTicker(mint, name) {
       openTerminal();
+      document.getElementById("chat-section").scrollIntoView({ behavior: "smooth" });
       input.value = mint;
-      input.focus();
+      input.focus({ preventScroll: true });
     }
 
     (async function loadTicker() {
