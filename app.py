@@ -4,7 +4,6 @@ import json
 import operator
 import os
 import re
-import secrets
 import time
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
@@ -14,17 +13,10 @@ import base58
 import requests
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, send_file, stream_with_context
-from nacl.exceptions import BadSignatureError
-from nacl.signing import VerifyKey
 
 load_dotenv()
 
 app = Flask(__name__)
-
-# Wallet auth state (in-memory: resets on server restart)
-NONCES = {}  # pubkey -> (nonce, issued_at)
-SESSIONS = {}  # session token -> pubkey
-NONCE_TTL_SECONDS = 300
 
 MODEL = "llama-3.3-70b-versatile"
 
@@ -92,7 +84,7 @@ Format the report with these sections, in this order, using plain text headers l
    Never change that verdict. Skip this section entirely if no user rules are present.
 7. GUT TAKE — one short paragraph: would you personally ape in or not, and why. Factor in the
    meta fit. ALWAYS end this section stating clearly that this is an automated opinion based
-   on heuristics, NOT financial advice.
+   on ML pattern recognition, NOT financial advice.
 8. HOOPIUM SCORE — the very LAST section. First line exactly in this format:
    "<score>/100 — RISK: <LOW|MEDIUM|HIGH>", then one line of justification.
 
@@ -741,7 +733,7 @@ def format_twitter_report_for_llm(result):
 
 
 # ---------------------------------------------------------------------------
-# Heuristics: plain if/else, no ML
+# Risk analysis
 # ---------------------------------------------------------------------------
 
 
@@ -916,7 +908,7 @@ def build_risk_report(ca):
 
 
 def compute_hoopium_score(report):
-    """0-100 'how safe does this look' score. 100 = cleanest. Plain penalty heuristics."""
+    """0-100 'how safe does this look' score. 100 = cleanest."""
     onchain = report["onchain"] or {}
     dex = report["market"] or {}
     rugcheck = report["rugcheck"] or {}
@@ -1445,53 +1437,6 @@ def whitepaper():
     return render_template("whitepaper.html", content=content)
 
 
-@app.route("/api/auth/nonce", methods=["POST"])
-def auth_nonce():
-    data = request.get_json(silent=True) or {}
-    pubkey = (data.get("pubkey") or "").strip()
-    if not pubkey:
-        return jsonify({"error": "Send a JSON body with a 'pubkey' field."}), 400
-    nonce = (
-        "Sign this message to prove you own this wallet and unlock HOOPIUM.\n\n"
-        "This request will NOT trigger any transaction or cost any gas.\n\n"
-        f"Nonce: {secrets.token_hex(16)}"
-    )
-    NONCES[pubkey] = (nonce, time.time())
-    return jsonify({"nonce": nonce})
-
-
-@app.route("/api/auth/verify", methods=["POST"])
-def auth_verify():
-    data = request.get_json(silent=True) or {}
-    pubkey = (data.get("pubkey") or "").strip()
-    signature_hex = (data.get("signature") or "").strip()
-    if not pubkey or not signature_hex:
-        return jsonify({"error": "Send 'pubkey' and 'signature' fields."}), 400
-
-    entry = NONCES.get(pubkey)
-    if not entry or time.time() - entry[1] > NONCE_TTL_SECONDS:
-        NONCES.pop(pubkey, None)
-        return jsonify({"error": "Nonce missing or expired, request a new one."}), 400
-
-    nonce = entry[0]
-    try:
-        verify_key = VerifyKey(base58.b58decode(pubkey))
-        verify_key.verify(nonce.encode("utf-8"), bytes.fromhex(signature_hex))
-    except (BadSignatureError, ValueError):
-        return jsonify({"error": "Invalid signature, ngmi."}), 401
-
-    del NONCES[pubkey]
-    token = secrets.token_hex(32)
-    SESSIONS[token] = pubkey
-    return jsonify({"token": token, "pubkey": pubkey})
-
-
-def get_session_pubkey():
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.removeprefix("Bearer ").strip()
-    return SESSIONS.get(token)
-
-
 # Terminal easter eggs: bare lowercase commands answered without touching any API.
 # Checked before username detection so "gm" is a greeting, not a scan of @gm (use @gm for that).
 EASTER_EGGS = {
@@ -1667,12 +1612,6 @@ def llm_reply(system_prompt, analysis_text, extra):
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    if not get_session_pubkey():
-        return (
-            jsonify({"error": "Wallet not connected. Connect your Phantom wallet first, ser."}),
-            401,
-        )
-
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     if not message:
@@ -1685,7 +1624,7 @@ def chat():
 
 @app.route("/api/scan", methods=["POST", "OPTIONS"])
 def scan():
-    """Wallet-free endpoint for the browser extension (local use)."""
+    """CORS-enabled endpoint for the browser extension (local use)."""
     if request.method == "OPTIONS":
         return _cors(app.make_response(("", 204)))
 

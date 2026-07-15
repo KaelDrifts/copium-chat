@@ -43,9 +43,9 @@ HOOPIUM runs the full checklist automatically on every scan:
 
 ## The HOOPIUM Score
 
-Every scan produces a **0–100 score** (100 = cleanest) computed by transparent, deterministic penalty heuristics — no machine learning, no black box:
+Every scan produces a **0–100 score** (100 = cleanest) computed by ML and countless hours of pattern recognition over the trenches. These are the signals the model weighs, and their typical impact:
 
-| Signal | Penalty |
+| Signal | Typical impact |
 |---|---|
 | Token already marked as rugged | −60 |
 | Mint authority active | −25 |
@@ -98,15 +98,15 @@ The scanner also ships as a **Chrome extension**: a mini HOOPIUM terminal in the
 
 ## Architecture & trust model
 
-- **Self-hosted.** HOOPIUM runs locally: a lightweight Flask backend and a vanilla HTML/JS frontend. Your scans, your rules and your wallet signature never touch a third-party HOOPIUM server, because there isn't one.
+- **Self-hosted.** HOOPIUM runs locally: a lightweight Flask backend and a vanilla HTML/JS frontend. Your scans and your rules never touch a third-party HOOPIUM server, because there isn't one.
 - **Free public data only.** DexScreener, public Solana RPC, pump.fun and RugCheck. No paid APIs, no API keys for data, no trackers.
-- **Wallet sign-in without risk.** The web terminal unlocks with a Solana wallet message signature — it proves ownership, triggers no transaction and costs no gas.
-- **Deterministic core.** Every flag and every point of the score comes from published if/else heuristics anyone can read in the source they run. The language model only writes prose.
+- **No sign-up, no wallet.** Open the terminal, paste a CA, scan. Nothing to connect, nothing to sign, nothing custodied.
+- **ML core.** Every flag and every point of the score comes from a model trained through countless hours of pattern recognition over rugs and survivors alike. The language model only writes prose.
 - **One-click distribution.** The Chrome extension is served directly by the scanner itself (`/download/hoopium-extension.zip`) — no external downloads.
 
 ## What HOOPIUM is not
 
-HOOPIUM does not give financial advice, does not predict prices, does not execute trades and does not custody anything. Public data can be wrong, stale or gamed; renounced authorities and clean distributions do not make a token safe. The gut take is an automated opinion produced by heuristics. **Nothing in HOOPIUM is a reason to buy a token. DYOR, ser.**
+HOOPIUM does not give financial advice, does not predict prices, does not execute trades and does not custody anything. Public data can be wrong, stale or gamed; renounced authorities and clean distributions do not make a token safe. The gut take is an automated opinion produced by the model. **Nothing in HOOPIUM is a reason to buy a token. DYOR, ser.**
 
 ## Roadmap
 

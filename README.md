@@ -4,7 +4,7 @@ Terminal-styled scanner: paste a Solana token **contract address (CA)** in the c
 returns an automated risk report. Flask backend + Groq (free) for the write-up, vanilla HTML/JS frontend.
 
 > HOOPIUM does not give financial advice, does not predict prices and does not execute trades.
-> The "gut take" at the end of each report is an automated opinion based on simple heuristics.
+> The "gut take" at the end of each report is an automated opinion based on ML pattern recognition.
 
 ## What it checks (all free APIs, no keys needed)
 
@@ -15,8 +15,9 @@ returns an automated risk report. Flask backend + Groq (free) for the write-up, 
 | [pump.fun](https://pump.fun) | bonding curve progress / migrated to Raydium, the token's lore/description, and the currently trending tokens (the "meta") |
 | [RugCheck](https://rugcheck.xyz) | independent risk score to cross-reference |
 
-Red flags are computed with plain if/else heuristics (active authorities, concentrated holders,
-thin liquidity vs mcap, dead volume) into a **0-100 HOOPIUM score** (100 = cleanest) with a
+Red flags are computed by ML and countless hours of pattern recognition (active authorities,
+concentrated holders, thin liquidity vs mcap, dead volume) into a **0-100 HOOPIUM score**
+(100 = cleanest) with a
 LOW / MEDIUM / HIGH risk level, and the pre-computed result is handed to the LLM only to write
 it up as a readable report. If Groq is down or rate-limited, the raw scan is returned instead.
 
@@ -74,17 +75,7 @@ GROQ_API_KEY=gsk_your_key_here
 
 Open [http://localhost:5001](http://localhost:5001) and that's it. gm.
 
-## 3. Connect your wallet
-
-The scanner is unlocked by signing in with a Solana wallet ([Phantom](https://phantom.app)):
-
-1. Click **connect wallet** in the nav.
-2. Approve the connection and sign the login message in Phantom.
-
-The signature only proves you own the wallet — it never triggers a transaction and costs no gas.
-Sessions live in server memory, so restarting the server logs everyone out.
-
-## 4. Scan a token
+## 3. Scan a token
 
 Paste any Solana token CA (base58, 32-44 chars) in the terminal, e.g. BONK:
 
@@ -102,7 +93,7 @@ and to RugCheck's data for authorities/holders). If you have your own RPC endpoi
 SOLANA_RPC_URL=https://your-rpc-endpoint
 ```
 
-## 5. Browser extension (scan without leaving your trading platform)
+## 4. Browser extension (scan without leaving your trading platform)
 
 There's a Chrome extension in `extension/` with a mini terminal popup, so you can copy a CA
 on Axiom/Photon/DexScreener/whatever and scan it without switching tabs:
@@ -114,7 +105,7 @@ on Axiom/Photon/DexScreener/whatever and scan it without switching tabs:
 
 Bonus: select a CA on any page → right click → **Scan "…" with HOOPIUM** and the popup
 opens with the report already loading. The extension talks to your local server on
-`localhost:5001` (endpoint `/api/scan`, no wallet needed) — nothing leaves your machine
+`localhost:5001` (endpoint `/api/scan`) — nothing leaves your machine
 except the calls to the free data APIs.
 
 > Note: port 5001 is used because on macOS port 5000 is usually taken by AirPlay Receiver.

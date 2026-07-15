@@ -73,23 +73,6 @@
 
     nav .links a:hover { color: var(--amber); text-shadow: 0 0 6px var(--amber); }
 
-    #wallet-btn {
-      background: transparent;
-      border: 1px solid var(--green);
-      color: var(--green);
-      font-family: inherit;
-      font-size: 13px;
-      padding: 6px 14px;
-      margin-left: 20px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    #wallet-btn:hover { background: var(--green); color: #000; }
-    #wallet-btn.connected { border-color: var(--amber); color: var(--amber); }
-    #wallet-btn.connected:hover { background: var(--amber); color: #000; }
-    #wallet-btn:disabled { opacity: 0.4; cursor: wait; }
-
     /* ---------- LIVE META TICKER ---------- */
     .ticker-wrap {
       overflow: hidden;
@@ -690,7 +673,7 @@
       const screen = document.getElementById("boot-screen");
       const CMD = "./hoopium --initialize";
       const LINES = [
-        "loading rug detection heuristics",
+        "loading rug pattern-recognition models",
         "connecting to solana mainnet",
         "syncing pump.fun meta radar",
         "mounting wayback archive reader",
@@ -753,7 +736,6 @@
       <a href="#chat-section">terminal</a>
       <a href="#extension">extension</a>
       <a href="/whitepaper">whitepaper</a>
-      <button id="wallet-btn">connect wallet</button>
     </div>
   </nav>
 
@@ -831,7 +813,7 @@
       </div>
       <div class="card">
         <h3>0% financial advice</h3>
-        <p>The gut take is heuristics with personality, never a buy signal. NFA by design, dyor ser.</p>
+        <p>The gut take is ML pattern recognition with personality, never a buy signal. NFA by design, dyor ser.</p>
       </div>
     </div>
     <p class="specs-more"><a class="read-more" href="/specs">&gt; full specs (thresholds, score table, rules engine)</a></p>
@@ -845,12 +827,12 @@
         <span class="dots">[●●●]</span>
       </div>
       <div id="chat">
-        <div class="msg bot"><span class="tag">[HOOPIUM]</span> gm ser. connect your wallet to unlock the scanner (just a signature, no transaction, no gas). then paste any solana token CA and I'll check it for rug vibes — or drop an @username and I'll dig up that X account's history.</div>
+        <div class="msg bot"><span class="tag">[HOOPIUM]</span> gm ser. paste any solana token CA and I'll check it for rug vibes — or drop an @username and I'll dig up that X account's history. type help for all commands.</div>
       </div>
       <div class="inputbar">
         <span class="prompt-char">&gt;</span>
-        <input id="input" type="text" autocomplete="off" placeholder="connect your wallet first, ser..." disabled />
-        <button id="send" disabled>send</button>
+        <input id="input" type="text" autocomplete="off" placeholder="paste a solana token CA or an @username, ser..." />
+        <button id="send">send</button>
       </div>
     </div>
 
@@ -968,7 +950,7 @@
   </div>
 
   <footer>
-    <p><span class="nfa">⚠ NOT FINANCIAL ADVICE.</span> HOOPIUM's reports and gut takes are automated heuristics, nothing else.</p>
+    <p><span class="nfa">⚠ NOT FINANCIAL ADVICE.</span> HOOPIUM's reports and gut takes come from ML and countless hours of pattern recognition — automated opinions, nothing else.</p>
     <p>No trades executed, no price predictions. Data from free public APIs, may be wrong or stale. dyor, ser.</p>
     <p>HOOPIUM © 2026 — built with flask, groq, dexscreener, rugcheck and pure hoopium</p>
   </footer>
@@ -977,90 +959,6 @@
     const chat = document.getElementById("chat");
     const input = document.getElementById("input");
     const sendBtn = document.getElementById("send");
-    const walletBtn = document.getElementById("wallet-btn");
-
-    let authToken = sessionStorage.getItem("hoopium_token");
-    let walletPubkey = sessionStorage.getItem("hoopium_pubkey");
-
-    function getPhantom() {
-      const provider = window.phantom?.solana || window.solana;
-      return provider && provider.isPhantom ? provider : null;
-    }
-
-    function toHex(bytes) {
-      return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    function setConnectedUI() {
-      walletBtn.classList.add("connected");
-      walletBtn.textContent = walletPubkey.slice(0, 4) + "..." + walletPubkey.slice(-4);
-      input.disabled = false;
-      sendBtn.disabled = false;
-      input.placeholder = "paste a solana token CA or an @username, ser...";
-      input.focus();
-    }
-
-    function setDisconnectedUI() {
-      authToken = null;
-      walletPubkey = null;
-      sessionStorage.removeItem("hoopium_token");
-      sessionStorage.removeItem("hoopium_pubkey");
-      walletBtn.classList.remove("connected");
-      walletBtn.textContent = "connect wallet";
-      input.disabled = true;
-      sendBtn.disabled = true;
-      input.placeholder = "connect your wallet first, ser...";
-    }
-
-    async function connectWallet() {
-      const provider = getPhantom();
-      if (!provider) {
-        addMessage("error", "Phantom wallet not found. Install it at https://phantom.app, ser.");
-        return;
-      }
-
-      walletBtn.disabled = true;
-      try {
-        const { publicKey } = await provider.connect();
-        const pubkey = publicKey.toString();
-
-        const nonceRes = await fetch("/api/auth/nonce", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pubkey }),
-        });
-        const nonceData = await nonceRes.json();
-        if (!nonceRes.ok) throw new Error(nonceData.error || "couldn't get nonce");
-
-        const encoded = new TextEncoder().encode(nonceData.nonce);
-        const { signature } = await provider.signMessage(encoded, "utf8");
-
-        const verifyRes = await fetch("/api/auth/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pubkey, signature: toHex(signature) }),
-        });
-        const verifyData = await verifyRes.json();
-        if (!verifyRes.ok) throw new Error(verifyData.error || "signature verification failed");
-
-        authToken = verifyData.token;
-        walletPubkey = verifyData.pubkey;
-        sessionStorage.setItem("hoopium_token", authToken);
-        sessionStorage.setItem("hoopium_pubkey", walletPubkey);
-        setConnectedUI();
-        addMessage("bot", "wallet verified, ser. wagmi. paste a solana token CA and I'll scan it for rug vibes, or an @username to check that X account's history (takes a few seconds). type help for all commands. not financial advice, obviously.");
-      } catch (err) {
-        addMessage("error", err.message || "wallet connection rejected, ngmi");
-      } finally {
-        walletBtn.disabled = false;
-      }
-    }
-
-    walletBtn.addEventListener("click", () => {
-      if (!authToken) connectWallet();
-    });
-
-    if (authToken && walletPubkey) setConnectedUI();
 
     function addMessage(role, text) {
       const div = document.createElement("div");
@@ -1206,18 +1104,9 @@
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + authToken,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message, rules, stream: true }),
         });
-        if (res.status === 401) {
-          clearTyping();
-          setDisconnectedUI();
-          addMessage("error", "session expired, ser. reconnect your wallet.");
-          return;
-        }
 
         const ctype = res.headers.get("content-type") || "";
         if (!ctype.includes("ndjson")) {
@@ -1289,11 +1178,9 @@
         addMessage("error", "couldn't reach the server: " + err.message);
       } finally {
         clearTyping();
-        if (authToken) {
-          sendBtn.disabled = false;
-          input.disabled = false;
-          input.focus();
-        }
+        sendBtn.disabled = false;
+        input.disabled = false;
+        input.focus();
       }
     }
 
@@ -1654,12 +1541,8 @@
 
     function scanFromTicker(mint, name) {
       document.getElementById("chat-section").scrollIntoView({ behavior: "smooth" });
-      if (!input.disabled) {
-        input.value = mint;
-        input.focus();
-      } else {
-        addMessage("error", `connect your wallet first, ser — then I'll scan ${name} for you.`);
-      }
+      input.value = mint;
+      input.focus();
     }
 
     (async function loadTicker() {
