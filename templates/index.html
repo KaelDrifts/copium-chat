@@ -383,49 +383,7 @@
       font-size: 12px;
     }
 
-    .rule-row .rule-del {
-      background: transparent;
-      border: none;
-      color: var(--red);
-      font-family: inherit;
-      cursor: pointer;
-      font-size: 13px;
-    }
-
-    .rule-add { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-
-    .rule-add select, .rule-add input {
-      background: #000;
-      border: 1px solid var(--green-dim);
-      color: var(--green);
-      font-family: inherit;
-      font-size: 12px;
-      padding: 5px 6px;
-      outline: none;
-    }
-
-    .rule-add input { width: 110px; }
-    .rule-add.rule-code input { flex: 1; min-width: 260px; width: auto; }
-
-    .rule-add button {
-      background: transparent;
-      border: 1px solid var(--green);
-      color: var(--green);
-      font-family: inherit;
-      font-size: 12px;
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-
-    .rule-add button:hover { background: var(--green); color: #000; }
-
     /* ---------- SETUPS ---------- */
-    .setups-block {
-      margin-top: 14px;
-      border-top: 1px dashed var(--green-dim);
-      padding-top: 4px;
-    }
-
     .setup-create {
       background: transparent;
       border: 1px solid var(--amber);
@@ -840,46 +798,14 @@
       <button id="rules-toggle" class="rules-toggle">[+] my buy rules<span id="rules-count"></span></button>
       <div id="rules-body" hidden>
         <p class="rules-hint">
-          set your own thresholds — every scan checks them and gives you an instant
-          WOULD BUY / WOULD NOT BUY verdict on top of the HOOPIUM score. saved in this browser.
+          describe your criteria in plain english and the AI compiles them into a
+          <span class="hl">setup</span>: a named set of conditions a coin must comply with
+          to be tradable or get a score. every scan checks your active setups and gives you
+          an instant WOULD BUY / WOULD NOT BUY verdict on top of the HOOPIUM score.
+          saved in this browser, editable anytime.
         </p>
-        <div id="rules-list"></div>
-        <div class="rule-add">
-          <select id="rule-metric">
-            <option value="hoopium_score">hoopium score (0-100)</option>
-            <option value="market_cap_usd">market cap ($)</option>
-            <option value="liquidity_usd">liquidity ($)</option>
-            <option value="liquidity_to_mcap_pct">liquidity / mcap (%)</option>
-            <option value="volume_24h_usd">24h volume ($)</option>
-            <option value="price_usd">price ($)</option>
-            <option value="price_change_24h_pct">24h price change (%)</option>
-            <option value="pair_age_days">pair age (days)</option>
-            <option value="top10_holders_pct">top 10 holders (%)</option>
-            <option value="total_holders">total holders</option>
-            <option value="rugcheck_score">rugcheck score</option>
-            <option value="bonding_curve_pct">bonding curve (%)</option>
-            <option value="mint_renounced">mint renounced (1=yes)</option>
-            <option value="freeze_renounced">freeze renounced (1=yes)</option>
-          </select>
-          <select id="rule-op">
-            <option>&gt;=</option>
-            <option>&lt;=</option>
-            <option>&gt;</option>
-            <option>&lt;</option>
-            <option>==</option>
-          </select>
-          <input id="rule-value" type="number" step="any" placeholder="value" />
-          <button id="rule-add-btn">add rule</button>
-        </div>
-        <div class="setups-block">
-          <p class="rules-hint">
-            or go further — describe your criteria in plain english and the AI compiles them
-            into a <span class="hl">setup</span>: a named set of conditions a coin must comply
-            with to be tradable or get a score. edit it anytime.
-          </p>
-          <div id="setups-list"></div>
-          <button id="setup-create-btn" class="setup-create">[+] create your own setup</button>
-        </div>
+        <div id="setups-list"></div>
+        <button id="setup-create-btn" class="setup-create">[+] create your own setup</button>
       </div>
     </div>
   </section>
@@ -973,16 +899,6 @@
       div.appendChild(document.createTextNode(text));
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
-    }
-
-    function addRulesVerdict(data) {
-      if (data.user_rules) {
-        const r = data.user_rules;
-        addMessage(
-          r.passed ? "verdict-pass" : "verdict-fail",
-          `${r.passed ? "✓" : "✗"} ${r.verdict} per your rules (${r.n_pass}/${r.n_rules} passed)`
-        );
-      }
     }
 
     function addScoreMessage(data) {
@@ -1105,7 +1021,7 @@
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, rules, stream: true }),
+          body: JSON.stringify({ message, stream: true }),
         });
 
         const ctype = res.headers.get("content-type") || "";
@@ -1116,7 +1032,6 @@
           if (!res.ok || data.error) {
             addMessage("error", data.error || "something broke, ngmi");
           } else {
-            addRulesVerdict(data);
             addMessage("bot", data.reply);
             addScoreMessage(data);
             addShareRow(data);
@@ -1134,7 +1049,6 @@
           clearTyping();
           if (obj.meta) {
             meta = obj.meta;
-            addRulesVerdict(meta);
           } else if (obj.reply) {
             addMessage("bot", obj.reply);
           } else if (obj.error) {
@@ -1206,69 +1120,17 @@
       }
     });
 
-    // ---------- user buy rules (saved in this browser) ----------
+    // ---------- my buy rules panel: setups only ----------
     const rulesToggle = document.getElementById("rules-toggle");
     const rulesBody = document.getElementById("rules-body");
-    const rulesList = document.getElementById("rules-list");
     const rulesCount = document.getElementById("rules-count");
-    const ruleMetric = document.getElementById("rule-metric");
-    const ruleOp = document.getElementById("rule-op");
-    const ruleValue = document.getElementById("rule-value");
-
-    let rules = [];
-    try { rules = JSON.parse(localStorage.getItem("hoopium_rules")) || []; } catch (e) {}
-
-    function metricLabel(key) {
-      const opt = ruleMetric.querySelector(`option[value="${key}"]`);
-      return opt ? opt.textContent : key;
-    }
-
-    function saveRules() {
-      localStorage.setItem("hoopium_rules", JSON.stringify(rules));
-      renderRules();
-    }
-
-    function renderRules() {
-      rulesCount.textContent = rules.length ? ` (${rules.length} active)` : "";
-      rulesList.innerHTML = "";
-      if (!rules.length) {
-        const p = document.createElement("div");
-        p.className = "rule-row";
-        p.textContent = "no rules yet — add one below, ser";
-        rulesList.appendChild(p);
-        return;
-      }
-      rules.forEach((rule, i) => {
-        const row = document.createElement("div");
-        row.className = "rule-row";
-        const del = document.createElement("button");
-        del.className = "rule-del";
-        del.textContent = "[x]";
-        del.title = "delete rule";
-        del.addEventListener("click", () => { rules.splice(i, 1); saveRules(); });
-        row.appendChild(del);
-        const label = rule.expr ? `{ ${rule.expr} }` : `${metricLabel(rule.metric)} ${rule.op} ${rule.value}`;
-        row.appendChild(document.createTextNode(label));
-        rulesList.appendChild(row);
-      });
-    }
 
     rulesToggle.addEventListener("click", () => {
       rulesBody.hidden = !rulesBody.hidden;
       rulesToggle.textContent = (rulesBody.hidden ? "[+]" : "[-]") + " my buy rules";
       rulesToggle.appendChild(rulesCount);
-      renderRules();
+      renderSetups();
     });
-
-    document.getElementById("rule-add-btn").addEventListener("click", () => {
-      const value = parseFloat(ruleValue.value);
-      if (Number.isNaN(value)) { ruleValue.focus(); return; }
-      rules.push({ metric: ruleMetric.value, op: ruleOp.value, value });
-      ruleValue.value = "";
-      saveRules();
-    });
-
-    renderRules();
 
     // ---------- setups: describe your rules to the AI, it compiles a setup ----------
     // NOTE: visual prototype only — the "AI" is a local keyword parser, nothing is
@@ -1294,7 +1156,16 @@
     }
 
     function renderSetups() {
+      const active = setups.filter((s) => s.on).length;
+      rulesCount.textContent = setups.length ? ` (${active} active)` : "";
       setupsList.innerHTML = "";
+      if (!setups.length) {
+        const p = document.createElement("div");
+        p.className = "rule-row";
+        p.textContent = "no setups yet — create one below, ser";
+        setupsList.appendChild(p);
+        return;
+      }
       setups.forEach((s, i) => {
         const row = document.createElement("div");
         row.className = "setup-row";

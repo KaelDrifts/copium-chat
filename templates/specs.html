@@ -213,14 +213,12 @@
 
     <h2>your buy rules</h2>
     <p>
-      Define your own thresholds over any scanned metric and get an instant
-      <span class="hl">WOULD BUY / WOULD NOT BUY</span> verdict on every scan, before the
-      report renders. Two ways to build them:
+      Describe your criteria in plain english and the AI compiles them into a
+      <span class="hl">setup</span>: a named set of conditions the coin must comply with to
+      be tradable or get a score. Every scan checks your active setups and gives you an
+      instant <span class="hl">WOULD BUY / WOULD NOT BUY</span> verdict before the report
+      renders.
     </p>
-    <ul>
-      <li><span class="hl">simple</span>: pick a metric, an operator (<code>&gt;= &lt;= &gt; &lt; ==</code>) and a value</li>
-      <li><span class="hl">setups</span>: describe your criteria in plain english and the AI compiles them into a named set of conditions the coin must comply with to be tradable or get a score</li>
-    </ul>
     <pre class="code">&gt; "at least $50k liquidity, 500+ holders, top 10 under 25%, mint renounced"
 ⚙ degen scalp — 4 conditions
   ✓ liquidity &gt;= $50,000
@@ -236,8 +234,7 @@
     <p>
       Name a setup once, describe it once — then edit, toggle or delete it anytime from the
       panel. A condition referencing missing data returns UNKNOWN and never counts as passing:
-      missing information is treated as risk, not as a pass. Rules and setups are saved in
-      your browser.
+      missing information is treated as risk, not as a pass. Setups are saved in your browser.
     </p>
 
     <h2>chrome extension</h2>

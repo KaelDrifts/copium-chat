@@ -27,18 +27,12 @@ lore/narrative fits it.
 
 ## Your own buy rules
 
-Both the web terminal ("my buy rules" panel under the chat) and the extension popup ("my rules"
-in the titlebar) let you define your own thresholds over any scanned metric — market cap,
-liquidity, liquidity/mcap %, volume, pair age, top-10 holder %, total holders, RugCheck score,
-bonding curve %, HOOPIUM score, mint/freeze renounced. Pick a metric, an operator (`>= <= > < ==`)
-and a value; add as many rules as you want. They're saved in your browser and checked on every
-scan, giving you an instant **WOULD BUY / WOULD NOT BUY** verdict by your own criteria — shown
-before the report, next to the HOOPIUM score. Rules with missing data come back as UNKNOWN and
-count as not passing.
-
-You can also **create your own setup**: describe your criteria in plain english and the AI
-compiles them into a named set of conditions the coin must comply with to be tradable or
-get a score:
+In the web terminal ("my buy rules" panel under the chat) you **create your own setups**:
+describe your criteria in plain english and the AI compiles them into a named set of
+conditions the coin must comply with to be tradable or get a score. Conditions can reference
+any scanned metric — market cap, liquidity, liquidity/mcap %, volume, pair age, top-10
+holder %, total holders, RugCheck score, bonding curve %, HOOPIUM score, mint/freeze
+renounced:
 
 ```
 > "at least $50k liquidity, 500+ holders, top 10 under 25%, mint renounced"
@@ -50,7 +44,10 @@ get a score:
 ```
 
 Setups get a name, can be edited or toggled on/off anytime from the panel, and are saved in
-your browser alongside your simple rules.
+your browser. Every scan checks your active setups and gives you an instant
+**WOULD BUY / WOULD NOT BUY** verdict by your own criteria. Conditions with missing data
+come back as UNKNOWN and count as not passing. (The extension popup keeps a quick threshold
+builder: pick a metric, an operator and a value.)
 
 ## 1. Get a free API key
 

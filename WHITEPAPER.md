@@ -65,7 +65,7 @@ Two or more hard red flags cap the score at 35; one caps it at 65 — the number
 
 The score is HOOPIUM's opinion. The second verdict is **yours**.
 
-Users define their own buy rules over every scanned metric — market cap, liquidity, liquidity/mcap ratio, volume, pair age, holder concentration, total holders, bonding curve progress, the HOOPIUM score itself, authority status — either with a simple *metric / operator / threshold* builder, or by **describing their criteria in plain english and letting the AI compile them into a setup**: a named set of conditions a coin must comply with to be tradable or get a score.
+Users define their own buy criteria over every scanned metric — market cap, liquidity, liquidity/mcap ratio, volume, pair age, holder concentration, total holders, bonding curve progress, the HOOPIUM score itself, authority status — by **describing them in plain english and letting the AI compile them into a setup**: a named set of conditions a coin must comply with to be tradable or get a score.
 
 ```
 > "at least $50k liquidity, 500+ holders, top 10 under 25%, mint renounced"
