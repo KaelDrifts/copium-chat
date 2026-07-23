@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}HOOPIUM — solana token risk scanner{% endblock %}</title>
+  <meta name="description" content="{% block description %}HOOPIUM: paste a Solana contract address and get an automated rug-risk report. Free APIs, terminal vibes, zero financial advice.{% endblock %}" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --green: #33ff33;
+      --green-dim: #1a9c1a;
+      --amber: #ffbf00;
+      --amber-dim: #ff9900;
+      --red: #ff4444;
+      --bg: #000;
+      --panel: #050a05;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--green);
+      font-family: "Courier New", Courier, monospace;
+      overflow-x: hidden;
+    }
+
+    /* CRT scanlines overlay */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15) 0px,
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      z-index: 999;
+    }
+
+    a { color: var(--amber); }
+
+    /* ---------- NAV ---------- */
+    nav {
+      position: sticky;
+      top: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: rgba(0, 0, 0, 0.92);
+      border-bottom: 1px solid var(--green-dim);
+      z-index: 100;
+    }
+
+    nav .logo { font-weight: bold; letter-spacing: 3px; }
+    nav .logo a {
+      color: var(--green);
+      text-decoration: none;
+      text-shadow: 0 0 8px var(--green);
+    }
+    nav .logo a:hover { color: var(--amber); text-shadow: 0 0 8px var(--amber); }
+
+    nav .links a {
+      color: var(--green);
+      text-decoration: none;
+      margin-left: 20px;
+      font-size: 14px;
+    }
+
+    nav .links a:hover { color: var(--amber); text-shadow: 0 0 6px var(--amber); }
+    nav .links a.active { color: var(--amber); }
+    nav .links a.active::before { content: "> "; }
+
+    /* ---------- BUTTONS ---------- */
+    .btn {
+      display: inline-block;
+      border: 1px solid var(--green);
+      color: var(--green);
+      background: transparent;
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px 28px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 0 12px rgba(51, 255, 51, 0.25);
+    }
+
+    .btn:hover { background: var(--green); color: #000; text-shadow: none; }
+
+    .btn-amber {
+      border-color: var(--amber);
+      color: var(--amber);
+      box-shadow: 0 0 12px rgba(255, 191, 0, 0.25);
+    }
+
+    .btn-amber:hover { background: var(--amber); color: #000; }
+
+    .blink { animation: blink 1.1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ---------- SECTION TITLES ---------- */
+    .section-title {
+      color: var(--amber);
+      font-size: 22px;
+      margin-bottom: 24px;
+      letter-spacing: 2px;
+    }
+
+    .section-title::before { content: "> "; color: var(--green); }
+
+    /* ---------- DOCUMENT PAGES (about / specs / whitepaper / socials) ---------- */
+    .doc { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+
+    .doc .page-title {
+      color: var(--amber);
+      font-size: 22px;
+      letter-spacing: 2px;
+      margin-bottom: 28px;
+    }
+
+    .doc .page-title::before { content: "> "; color: var(--green); }
+
+    .doc h2 {
+      color: var(--green);
+      font-size: 16px;
+      letter-spacing: 1px;
+      margin: 34px 0 12px;
+    }
+
+    .doc h2::before { content: "[+] "; color: var(--amber); }
+
+    .doc p { line-height: 1.8; font-size: 15px; margin-bottom: 14px; color: #b8ffb8; }
+    .doc .hl { color: var(--amber); }
+    .doc .nfa { color: var(--red); }
+    .doc ol, .doc ul { margin: 6px 0 14px 22px; color: #9adf9a; font-size: 14px; line-height: 2; }
+    .doc .backline { margin-top: 40px; }
+
+    /* ---------- FOOTER ---------- */
+    footer {
+      border-top: 1px solid var(--green-dim);
+      margin-top: 40px;
+      padding: 32px 20px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--green-dim);
+      line-height: 1.8;
+    }
+
+    footer .nfa { color: var(--red); }
+
+    /* ---------- BOOT INTRO ---------- */
+    #boot {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 998; /* below the scanlines overlay (999) so the CRT effect stays on top */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.45s ease;
+    }
+
+    #boot.done { opacity: 0; pointer-events: none; }
+
+    .boot-inner { width: min(600px, 90vw); }
+
+    #boot-screen {
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 2;
+      color: var(--green);
+      white-space: pre-wrap;
+      min-height: 300px;
+      text-shadow: 0 0 6px rgba(51, 255, 51, 0.35);
+    }
+
+    #boot-screen .ok { color: var(--amber); }
+    #boot-screen .granted { color: var(--amber); text-shadow: 0 0 8px rgba(255, 191, 0, 0.4); }
+
+    .boot-cursor { animation: boot-blink 0.9s steps(1) infinite; }
+    @keyframes boot-blink { 50% { opacity: 0; } }
+
+    .boot-skip {
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--green-dim);
+      text-align: center;
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div id="boot" aria-hidden="true">
+    <div class="boot-inner">
+      <pre id="boot-screen"></pre>
+      <p class="boot-skip">[ click anywhere to skip ]</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const boot = document.getElementById("boot");
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (sessionStorage.getItem("hoopium_booted") || reduced) {
+        boot.remove();
+        return;
+      }
+
+      const screen = document.getElementById("boot-screen");
+      const CMD = "./hoopium --initialize";
+      const LINES = [
+        "loading rug pattern-recognition models",
+        "connecting to solana mainnet",
+        "syncing pump.fun meta radar",
+        "mounting wayback archive reader",
+        "calibrating copium levels",
+      ];
+
+      let out = "&gt; ";
+      let done = false;
+
+      function render(cursor) {
+        screen.innerHTML = out + (cursor ? '<span class="boot-cursor">█</span>' : "");
+      }
+
+      function finish() {
+        if (done) return;
+        done = true;
+        sessionStorage.setItem("hoopium_booted", "1");
+        boot.classList.add("done");
+        setTimeout(function () { boot.remove(); }, 500);
+      }
+
+      boot.addEventListener("click", finish);
+      document.addEventListener("keydown", finish);
+
+      let ci = 0;
+      function typeCmd() {
+        if (done) return;
+        if (ci < CMD.length) {
+          out += CMD.charAt(ci++);
+          render(true);
+          setTimeout(typeCmd, 38 + Math.random() * 42);
+        } else {
+          setTimeout(bootLines, 320);
+        }
+      }
+
+      let li = 0;
+      function bootLines() {
+        if (done) return;
+        if (li < LINES.length) {
+          out += '\n  <span class="ok">[ OK ]</span> ' + LINES[li++];
+          render(true);
+          setTimeout(bootLines, 130 + Math.random() * 100);
+        } else {
+          out += '\n\n<span class="granted">access granted, ser. welcome to the trenches.</span>';
+          render(false);
+          setTimeout(finish, 750);
+        }
+      }
+
+      render(true);
+      setTimeout(typeCmd, 400);
+    })();
+  </script>
+
+  {% block nav %}
+  <nav>
+    <div class="logo"><a href="/" title="back to menu">HOOPIUM_</a></div>
+    <div class="links">
+      <a href="/about"{% if active == 'about' %} class="active"{% endif %}>about</a>
+      <a href="/specs"{% if active == 'specs' %} class="active"{% endif %}>specs</a>
+      <a href="/terminal"{% if active == 'terminal' %} class="active"{% endif %}>terminal</a>
+      <a href="/extension"{% if active == 'extension' %} class="active"{% endif %}>extension</a>
+      <a href="/whitepaper"{% if active == 'whitepaper' %} class="active"{% endif %}>whitepaper</a>
+      <a href="/socials"{% if active == 'socials' %} class="active"{% endif %}>socials</a>
+    </div>
+  </nav>
+  {% endblock %}
+
+  {% block body %}{% endblock %}
+
+  {% block footer %}
+  <footer>
+    <p><span class="nfa">⚠ NOT FINANCIAL ADVICE.</span> HOOPIUM's reports and gut takes come from ML and countless hours of pattern recognition — automated opinions, nothing else.</p>
+    <p>No trades executed, no price predictions. Data from free public APIs, may be wrong or stale. dyor, ser.</p>
+    <p>HOOPIUM © 2026 — built with flask, groq, dexscreener, rugcheck and pure hoopium</p>
+  </footer>
+  {% endblock %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

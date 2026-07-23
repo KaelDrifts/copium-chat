@@ -1,278 +1,188 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HOOPIUM — specs</title>
-  <meta name="description" content="Full HOOPIUM specs: every check, every threshold, the score methodology and the rules engine." />
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+{% extends "base.html" %}
 
-    :root {
-      --green: #33ff33;
-      --green-dim: #1a9c1a;
-      --amber: #ffbf00;
-      --red: #ff4444;
-      --bg: #000;
-      --panel: #050a05;
-    }
+{% block title %}HOOPIUM — specs{% endblock %}
+{% block description %}Full HOOPIUM specs: every check, every threshold, the score methodology and the rules engine.{% endblock %}
 
-    body {
-      background: var(--bg);
-      color: var(--green);
-      font-family: "Courier New", Courier, monospace;
-    }
+{% block head %}
+<style>
+  .doc table {
+    border-collapse: collapse;
+    margin: 10px 0 16px;
+    font-size: 13px;
+    width: 100%;
+    max-width: 560px;
+  }
 
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background: repeating-linear-gradient(
-        0deg,
-        rgba(0, 0, 0, 0.15) 0px,
-        rgba(0, 0, 0, 0.15) 1px,
-        transparent 1px,
-        transparent 3px
-      );
-      z-index: 999;
-    }
+  .doc th, .doc td {
+    border: 1px solid var(--green-dim);
+    padding: 6px 12px;
+    text-align: left;
+    color: #9adf9a;
+  }
 
-    a { color: var(--amber); }
+  .doc th { color: var(--amber); background: var(--panel); }
 
-    nav {
-      position: sticky;
-      top: 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 24px;
-      background: rgba(0, 0, 0, 0.92);
-      border-bottom: 1px solid var(--green-dim);
-      z-index: 100;
-    }
+  .doc code, .doc pre.code {
+    background: var(--panel);
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 13px;
+  }
 
-    nav .logo { font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px var(--green); }
-    nav .links a { color: var(--green); text-decoration: none; margin-left: 20px; font-size: 14px; }
-    nav .links a:hover { color: var(--amber); }
+  .doc code { padding: 1px 6px; }
+  .doc pre.code { padding: 12px 14px; margin: 8px 0 16px; overflow-x: auto; line-height: 1.7; }
+</style>
+{% endblock %}
 
-    main { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+{% block body %}
+<main class="doc">
+  <h1 class="page-title">man hoopium</h1>
 
-    .page-title {
-      color: var(--amber);
-      font-size: 22px;
-      letter-spacing: 2px;
-      margin-bottom: 28px;
-    }
+  <h2>on-chain checks</h2>
+  <p>Straight from the Solana chain, on every scan:</p>
+  <ul>
+    <li><span class="hl">mint authority</span> — active means the dev can print unlimited new supply. Instant red flag.</li>
+    <li><span class="hl">freeze authority</span> — active means your tokens can be frozen the moment you buy (honeypot risk). Instant red flag.</li>
+    <li><span class="hl">top-10 holder concentration</span> — % of supply held by the 10 largest accounts (liquidity pools and bonding curve accounts included, and noted as such). ≥50% is a red flag, ≥30% a warning.</li>
+  </ul>
 
-    .page-title::before { content: "> "; color: var(--green); }
+  <h2>market sanity</h2>
+  <p>Market structure with explicit thresholds — no vibes, published numbers:</p>
+  <ul>
+    <li>liquidity is <span class="hl">summed across every pool</span> where the token trades, so big tokens aren't under-counted</li>
+    <li>liquidity under <span class="hl">$1,000</span> → red flag (you may not be able to sell)</li>
+    <li>liquidity below <span class="hl">2% of market cap</span> → red flag (easy rug / heavy slippage); below 5% → warning</li>
+    <li>24h volume below <span class="hl">1% of market cap</span> (or under $100) → possible dead token</li>
+    <li>market cap under <span class="hl">$100k</span> → micro-cap warning; fewer than <span class="hl">200 holders</span> → tiny community warning</li>
+    <li>pair younger than <span class="hl">7 days</span> → no track record warning (and a hard cap on the score)</li>
+    <li>pump.fun tokens: bonding curve % or Raydium migration status</li>
+  </ul>
 
-    h2 {
-      color: var(--green);
-      font-size: 16px;
-      letter-spacing: 1px;
-      margin: 34px 0 12px;
-    }
+  <h2>the HOOPIUM score</h2>
+  <p>
+    Every scan produces a <span class="hl">0-100 score</span> (100 = cleanest), computed by
+    ML and countless hours of pattern recognition over the trenches. These are the signals
+    the model weighs, and their typical impact:
+  </p>
+  <table>
+    <tr><th>signal</th><th>typical impact</th></tr>
+    <tr><td>token already marked as rugged</td><td>-60</td></tr>
+    <tr><td>mint authority active</td><td>-25</td></tr>
+    <tr><td>freeze authority active</td><td>-25</td></tr>
+    <tr><td>top-10 holders ≥80% / ≥50% / ≥30%</td><td>-30 / -20 / -10</td></tr>
+    <tr><td>liquidity under $1k / under $5k</td><td>-30 / -20</td></tr>
+    <tr><td>liquidity &lt;2% / &lt;5% of mcap</td><td>-20 / -10</td></tr>
+    <tr><td>market cap under $20k / under $100k</td><td>-15 / -10</td></tr>
+    <tr><td>dead 24h volume</td><td>-10</td></tr>
+    <tr><td>pair younger than 1 / 3 / 7 days</td><td>-25 / -15 / -10</td></tr>
+    <tr><td>still on bonding curve</td><td>-15</td></tr>
+    <tr><td>fewer than 50 / 200 / 500 holders</td><td>-20 / -10 / -5</td></tr>
+    <tr><td>elevated third-party risk score</td><td>-10</td></tr>
+    <tr><td>on-chain data unverifiable</td><td>-10</td></tr>
+  </table>
+  <p>
+    Hard caps keep the number honest: two or more red flags cap the score at 35, one caps it
+    at 65. And <span class="hl">no track record means no LOW rating</span>: a pair younger than
+    2 days can never score above 55, younger than 7 days never above 75 — renounced authorities
+    and a clean distribution are table stakes on pump.fun, not proof of anything.
+    Risk level: <span class="hl">≥80 LOW · 50-79 MEDIUM · &lt;50 HIGH</span>.
+    The score is always the last section of the report.
+  </p>
 
-    h2::before { content: "[+] "; color: var(--amber); }
+  <h2>cross-referenced</h2>
+  <ul>
+    <li>RugCheck's independent risk score and flagged risks, to sanity-check HOOPIUM's own read</li>
+    <li>3-5 <span class="hl">similar-named tokens</span> with their market cap, liquidity, 24h change and age — most launches are clones, and the clones tell you how the story usually ends</li>
+  </ul>
 
-    p { line-height: 1.8; font-size: 15px; margin-bottom: 12px; color: #b8ffb8; }
-    .hl { color: var(--amber); }
-    .nfa { color: var(--red); }
+  <h2>meta radar</h2>
+  <p>
+    HOOPIUM pulls the tokens <span class="hl">currently live and trending on pump.fun</span> —
+    a real-time snapshot of the market meta — plus the scanned coin's own lore/description,
+    and the report judges whether the narrative fits what's running right now. A clean token
+    in a dead meta is still a bad trade; timing the meta is half the game.
+  </p>
 
-    ul { margin: 6px 0 14px 22px; color: #9adf9a; font-size: 14px; line-height: 2; }
+  <h2>x account history</h2>
+  <p>
+    Drop an <span class="hl">@username</span> (or a bare handle) in the terminal instead of a CA
+    and HOOPIUM checks the account's history against the
+    <span class="hl">Wayback Machine's public archives</span> — no X API, no paid data:
+  </p>
+  <ul>
+    <li><span class="hl">confirmed minimum age</span> — the oldest archived snapshot of the profile. The account can only be older than that, never younger.</li>
+    <li><span class="hl">tweet count, then vs now</span> — extracted from archived profile pages where the markup allows it, compared against the current live profile (or the newest snapshot when X blocks the live page)</li>
+    <li><span class="hl">possible mass tweet deletion</span> — flagged only when the current count dropped more than 30% AND by at least 100 tweets vs an old snapshot; small deletions and parsing noise never trigger it</li>
+    <li><span class="hl">archived identity</span> — display name and bio from the oldest and newest snapshots, so you can see if the account was rebranded</li>
+  </ul>
+  <p>
+    Everything the check could <span class="hl">not</span> verify is listed in a NOT CONFIRMED
+    section instead of being guessed — no snapshots means "nothing confirmed either way",
+    not "fresh account". This is best-effort by nature: X blocks direct scraping and archived
+    HTML varies wildly across the years, so the data may be incomplete, and every report says so.
+  </p>
 
-    table {
-      border-collapse: collapse;
-      margin: 10px 0 16px;
-      font-size: 13px;
-      width: 100%;
-      max-width: 560px;
-    }
-
-    th, td {
-      border: 1px solid var(--green-dim);
-      padding: 6px 12px;
-      text-align: left;
-      color: #9adf9a;
-    }
-
-    th { color: var(--amber); background: var(--panel); }
-
-    code, pre.code {
-      background: var(--panel);
-      border: 1px solid var(--green-dim);
-      color: var(--green);
-      font-family: inherit;
-      font-size: 13px;
-    }
-
-    code { padding: 1px 6px; }
-
-    pre.code { padding: 12px 14px; margin: 8px 0 16px; overflow-x: auto; line-height: 1.7; }
-
-    .backline { margin-top: 40px; }
-  </style>
-</head>
-<body>
-  <nav>
-    <div class="logo">HOOPIUM_</div>
-    <div class="links">
-      <a href="/">terminal</a>
-      <a href="/about">about</a>
-      <a href="/whitepaper">whitepaper</a>
-      <a href="https://x.com/HoopiumX" target="_blank" rel="noopener">socials</a>
-    </div>
-  </nav>
-
-  <main>
-    <h1 class="page-title">man hoopium</h1>
-
-    <h2>on-chain checks</h2>
-    <p>Straight from the Solana chain, on every scan:</p>
-    <ul>
-      <li><span class="hl">mint authority</span> — active means the dev can print unlimited new supply. Instant red flag.</li>
-      <li><span class="hl">freeze authority</span> — active means your tokens can be frozen the moment you buy (honeypot risk). Instant red flag.</li>
-      <li><span class="hl">top-10 holder concentration</span> — % of supply held by the 10 largest accounts (liquidity pools and bonding curve accounts included, and noted as such). ≥50% is a red flag, ≥30% a warning.</li>
-    </ul>
-
-    <h2>market sanity</h2>
-    <p>Market structure with explicit thresholds — no vibes, published numbers:</p>
-    <ul>
-      <li>liquidity is <span class="hl">summed across every pool</span> where the token trades, so big tokens aren't under-counted</li>
-      <li>liquidity under <span class="hl">$1,000</span> → red flag (you may not be able to sell)</li>
-      <li>liquidity below <span class="hl">2% of market cap</span> → red flag (easy rug / heavy slippage); below 5% → warning</li>
-      <li>24h volume below <span class="hl">1% of market cap</span> (or under $100) → possible dead token</li>
-      <li>market cap under <span class="hl">$100k</span> → micro-cap warning; fewer than <span class="hl">200 holders</span> → tiny community warning</li>
-      <li>pair younger than <span class="hl">7 days</span> → no track record warning (and a hard cap on the score)</li>
-      <li>pump.fun tokens: bonding curve % or Raydium migration status</li>
-    </ul>
-
-    <h2>the HOOPIUM score</h2>
-    <p>
-      Every scan produces a <span class="hl">0-100 score</span> (100 = cleanest), computed by
-      ML and countless hours of pattern recognition over the trenches. These are the signals
-      the model weighs, and their typical impact:
-    </p>
-    <table>
-      <tr><th>signal</th><th>typical impact</th></tr>
-      <tr><td>token already marked as rugged</td><td>-60</td></tr>
-      <tr><td>mint authority active</td><td>-25</td></tr>
-      <tr><td>freeze authority active</td><td>-25</td></tr>
-      <tr><td>top-10 holders ≥80% / ≥50% / ≥30%</td><td>-30 / -20 / -10</td></tr>
-      <tr><td>liquidity under $1k / under $5k</td><td>-30 / -20</td></tr>
-      <tr><td>liquidity &lt;2% / &lt;5% of mcap</td><td>-20 / -10</td></tr>
-      <tr><td>market cap under $20k / under $100k</td><td>-15 / -10</td></tr>
-      <tr><td>dead 24h volume</td><td>-10</td></tr>
-      <tr><td>pair younger than 1 / 3 / 7 days</td><td>-25 / -15 / -10</td></tr>
-      <tr><td>still on bonding curve</td><td>-15</td></tr>
-      <tr><td>fewer than 50 / 200 / 500 holders</td><td>-20 / -10 / -5</td></tr>
-      <tr><td>elevated third-party risk score</td><td>-10</td></tr>
-      <tr><td>on-chain data unverifiable</td><td>-10</td></tr>
-    </table>
-    <p>
-      Hard caps keep the number honest: two or more red flags cap the score at 35, one caps it
-      at 65. And <span class="hl">no track record means no LOW rating</span>: a pair younger than
-      2 days can never score above 55, younger than 7 days never above 75 — renounced authorities
-      and a clean distribution are table stakes on pump.fun, not proof of anything.
-      Risk level: <span class="hl">≥80 LOW · 50-79 MEDIUM · &lt;50 HIGH</span>.
-      The score is always the last section of the report.
-    </p>
-
-    <h2>cross-referenced</h2>
-    <ul>
-      <li>RugCheck's independent risk score and flagged risks, to sanity-check HOOPIUM's own read</li>
-      <li>3-5 <span class="hl">similar-named tokens</span> with their market cap, liquidity, 24h change and age — most launches are clones, and the clones tell you how the story usually ends</li>
-    </ul>
-
-    <h2>meta radar</h2>
-    <p>
-      HOOPIUM pulls the tokens <span class="hl">currently live and trending on pump.fun</span> —
-      a real-time snapshot of the market meta — plus the scanned coin's own lore/description,
-      and the report judges whether the narrative fits what's running right now. A clean token
-      in a dead meta is still a bad trade; timing the meta is half the game.
-    </p>
-
-    <h2>x account history</h2>
-    <p>
-      Drop an <span class="hl">@username</span> (or a bare handle) in the terminal instead of a CA
-      and HOOPIUM checks the account's history against the
-      <span class="hl">Wayback Machine's public archives</span> — no X API, no paid data:
-    </p>
-    <ul>
-      <li><span class="hl">confirmed minimum age</span> — the oldest archived snapshot of the profile. The account can only be older than that, never younger.</li>
-      <li><span class="hl">tweet count, then vs now</span> — extracted from archived profile pages where the markup allows it, compared against the current live profile (or the newest snapshot when X blocks the live page)</li>
-      <li><span class="hl">possible mass tweet deletion</span> — flagged only when the current count dropped more than 30% AND by at least 100 tweets vs an old snapshot; small deletions and parsing noise never trigger it</li>
-      <li><span class="hl">archived identity</span> — display name and bio from the oldest and newest snapshots, so you can see if the account was rebranded</li>
-    </ul>
-    <p>
-      Everything the check could <span class="hl">not</span> verify is listed in a NOT CONFIRMED
-      section instead of being guessed — no snapshots means "nothing confirmed either way",
-      not "fresh account". This is best-effort by nature: X blocks direct scraping and archived
-      HTML varies wildly across the years, so the data may be incomplete, and every report says so.
-    </p>
-
-    <h2>your buy rules</h2>
-    <p>
-      Describe your criteria in plain english and the AI compiles them into a
-      <span class="hl">setup</span>: a named set of conditions the coin must comply with to
-      be tradable or get a score. Every scan checks your active setups and gives you an
-      instant <span class="hl">WOULD BUY / WOULD NOT BUY</span> verdict before the report
-      renders.
-    </p>
-    <pre class="code">&gt; "at least $50k liquidity, 500+ holders, top 10 under 25%, mint renounced"
+  <h2>your buy rules</h2>
+  <p>
+    Describe your criteria in plain english and the AI compiles them into a
+    <span class="hl">setup</span>: a named set of conditions the coin must comply with to
+    be tradable or get a score. Every scan checks your active setups and gives you an
+    instant <span class="hl">WOULD BUY / WOULD NOT BUY</span> verdict before the report
+    renders.
+  </p>
+  <pre class="code">&gt; "at least $50k liquidity, 500+ holders, top 10 under 25%, mint renounced"
 ⚙ degen scalp — 4 conditions
   ✓ liquidity &gt;= $50,000
   ✓ total holders &gt;= 500
   ✓ top 10 holders &lt;= 25%
   ✓ mint authority renounced</pre>
-    <p>
-      Conditions can reference any scanned metric: hoopium score, market cap, liquidity,
-      liquidity/mcap ratio, 24h volume, price and 24h change, pair age, top-10 holder
-      concentration, total holders, rugcheck score, bonding curve progress, and mint &amp;
-      freeze authority status.
-    </p>
-    <p>
-      Name a setup once, describe it once — then edit, toggle or delete it anytime from the
-      panel. A condition referencing missing data returns UNKNOWN and never counts as passing:
-      missing information is treated as risk, not as a pass. Setups are saved in your browser.
-    </p>
+  <p>
+    Conditions can reference any scanned metric: hoopium score, market cap, liquidity,
+    liquidity/mcap ratio, 24h volume, price and 24h change, pair age, top-10 holder
+    concentration, total holders, rugcheck score, bonding curve progress, and mint &amp;
+    freeze authority status.
+  </p>
+  <p>
+    Name a setup once, describe it once — then edit, toggle or delete it anytime from the
+    panel. A condition referencing missing data returns UNKNOWN and never counts as passing:
+    missing information is treated as risk, not as a pass. Setups are saved in your browser.
+  </p>
 
-    <h2>chrome extension</h2>
-    <p>
-      A mini HOOPIUM terminal in your toolbar: copy a CA on Axiom, Photon, BullX, DexScreener
-      or pump.fun and scan without switching tabs — or select the address on any page, right
-      click, <span class="hl">"Scan with HOOPIUM"</span>, and the popup opens with the report
-      already loading. <a href="/download/hoopium-extension.zip">download the extension (.zip)</a>
-      and see the <a href="/#extension">install steps</a>.
-    </p>
+  <h2>chrome extension</h2>
+  <p>
+    A mini HOOPIUM terminal in your toolbar: copy a CA on Axiom, Photon, BullX, DexScreener
+    or pump.fun and scan without switching tabs — or select the address on any page, right
+    click, <span class="hl">"Scan with HOOPIUM"</span>, and the popup opens with the report
+    already loading. <a href="/download/hoopium-extension.zip">download the extension (.zip)</a>
+    and see the <a href="/extension">install steps</a>.
+  </p>
 
-    <h2>report anatomy</h2>
-    <ul>
-      <li><span class="hl">HARD DATA</span> — the numbers</li>
-      <li><span class="hl">RED FLAGS</span> — worst first</li>
-      <li><span class="hl">COMPARABLES</span> — how the lookalikes are doing</li>
-      <li><span class="hl">META FIT</span> — the current meta and whether this coin belongs in it</li>
-      <li><span class="hl">YOUR RULES</span> — your criteria, your verdict</li>
-      <li><span class="hl">GUT TAKE</span> — would HOOPIUM ape or not (automated opinion, never advice)</li>
-      <li><span class="hl">HOOPIUM SCORE</span> — X/100 — RISK: LEVEL</li>
-    </ul>
-    <p>
-      If the write-up model is unavailable, the raw computed scan is returned instead — the
-      analysis never depends on the writer. External hiccups and rate limits are reported in
-      the chat, never as a crash.
-    </p>
+  <h2>report anatomy</h2>
+  <ul>
+    <li><span class="hl">HARD DATA</span> — the numbers</li>
+    <li><span class="hl">RED FLAGS</span> — worst first</li>
+    <li><span class="hl">COMPARABLES</span> — how the lookalikes are doing</li>
+    <li><span class="hl">META FIT</span> — the current meta and whether this coin belongs in it</li>
+    <li><span class="hl">YOUR RULES</span> — your criteria, your verdict</li>
+    <li><span class="hl">GUT TAKE</span> — would HOOPIUM ape or not (automated opinion, never advice)</li>
+    <li><span class="hl">HOOPIUM SCORE</span> — X/100 — RISK: LEVEL</li>
+  </ul>
+  <p>
+    If the write-up model is unavailable, the raw computed scan is returned instead — the
+    analysis never depends on the writer. External hiccups and rate limits are reported in
+    the chat, never as a crash.
+  </p>
 
-    <h2>0% financial advice</h2>
-    <p>
-      <span class="nfa">NFA by design.</span> No price predictions, no signals, no trades
-      executed, nothing custodied. The gut take is ML pattern recognition with personality. dyor, ser.
-    </p>
+  <h2>0% financial advice</h2>
+  <p>
+    <span class="nfa">NFA by design.</span> No price predictions, no signals, no trades
+    executed, nothing custodied. The gut take is ML pattern recognition with personality. dyor, ser.
+  </p>
 
-    <p class="backline">
-      <a href="/">&lt; back to the terminal</a> · <a href="/about">about</a> ·
-      <a href="/whitepaper">whitepaper</a>
-    </p>
-  </main>
-</body>
-</html>
+  <p class="backline">
+    <a href="/terminal">&lt; back to the terminal</a> · <a href="/about">about</a> ·
+    <a href="/whitepaper">whitepaper</a>
+  </p>
+</main>
+{% endblock %}

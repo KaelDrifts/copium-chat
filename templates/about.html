@@ -1,168 +1,75 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HOOPIUM — about</title>
-  <meta name="description" content="What HOOPIUM is, how a scan works, and what it will never do." />
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+{% extends "base.html" %}
 
-    :root {
-      --green: #33ff33;
-      --green-dim: #1a9c1a;
-      --amber: #ffbf00;
-      --red: #ff4444;
-      --bg: #000;
-      --panel: #050a05;
-    }
+{% block title %}HOOPIUM — about{% endblock %}
+{% block description %}What HOOPIUM is, how a scan works, and what it will never do.{% endblock %}
 
-    body {
-      background: var(--bg);
-      color: var(--green);
-      font-family: "Courier New", Courier, monospace;
-    }
+{% block body %}
+<main class="doc">
+  <h1 class="page-title">cat about.txt --full</h1>
 
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background: repeating-linear-gradient(
-        0deg,
-        rgba(0, 0, 0, 0.15) 0px,
-        rgba(0, 0, 0, 0.15) 1px,
-        transparent 1px,
-        transparent 3px
-      );
-      z-index: 999;
-    }
+  <h2>the mission</h2>
+  <p>
+    <span class="hl">HOOPIUM</span> has one single mission: scanning Solana tokens for rug
+    vibes before you ape. Trained on <span class="hl">thousands of hours of market data</span>
+    from the trenches, it compresses the whole due-diligence loop — authorities, holders,
+    liquidity, volume, bonding curve, narrative — into one action: paste a
+    <span class="hl">contract address (CA)</span>, get a risk report in seconds.
+  </p>
+  <p>
+    Every day thousands of tokens launch. Deployers know everything; buyers get a ticker,
+    a chart and whatever the deployer typed into a description box. The data to level that
+    asymmetry is public, but it's scattered across four different tools — and in the
+    trenches, four tabs is the whole trade. HOOPIUM runs the full checklist for you,
+    automatically, on every scan.
+  </p>
 
-    a { color: var(--amber); }
+  <h2>how a scan works</h2>
+  <ol>
+    <li>you paste a CA (base58, 32-44 chars) — an @username routes to the account history check instead, anything else gets bounced back</li>
+    <li>HOOPIUM pulls market structure from DexScreener: price, market cap, 24h volume, pair age, and liquidity summed across every pool where the token trades</li>
+    <li>it checks the chain itself: mint &amp; freeze authority status and top-10 holder concentration</li>
+    <li>for pump.fun tokens: bonding curve progress, or whether it already graduated to Raydium — plus the token's own lore/description</li>
+    <li>it cross-references RugCheck's independent risk score and pulls 3-5 similar-named tokens, because most launches are clones and the clones tell you how the story ends</li>
+    <li>it reads the <span class="hl">current market meta</span> from what's live and trending on pump.fun right now, and judges whether this coin's narrative fits it</li>
+    <li>an ML model — trained through countless hours of pattern recognition in the trenches — turns all of that into red flags and a <span class="hl">0-100 HOOPIUM score</span>, your own buy rules get evaluated, and the report is written up in the terminal</li>
+  </ol>
 
-    nav {
-      position: sticky;
-      top: 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 24px;
-      background: rgba(0, 0, 0, 0.92);
-      border-bottom: 1px solid var(--green-dim);
-      z-index: 100;
-    }
+  <h2>x account receipts</h2>
+  <p>
+    Half the rugs in the trenches start with a "dev" account created last week. Drop an
+    <span class="hl">@username</span> in the terminal and HOOPIUM digs through the
+    <span class="hl">Wayback Machine's public archives</span> instead of the chain: the oldest
+    archived snapshot of the profile is the account's <span class="hl">confirmed minimum age</span>,
+    the archived display name and bio show whether it was rebranded, and the tweet count then
+    vs now gets compared — with a <span class="hl">possible mass deletion</span> flag only when
+    the drop is big enough to be real evidence. X blocks direct scraping, so it's best-effort
+    by design: whatever couldn't be verified is listed as NOT CONFIRMED, never guessed.
+    No X API, no paid data.
+  </p>
 
-    nav .logo { font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px var(--green); }
-    nav .links a { color: var(--green); text-decoration: none; margin-left: 20px; font-size: 14px; }
-    nav .links a:hover { color: var(--amber); }
+  <h2>two verdicts, not one</h2>
+  <p>
+    Every scan ends with <span class="hl">HOOPIUM's verdict</span> — the 0-100 score with a
+    LOW / MEDIUM / HIGH risk level, computed by ML and countless hours of pattern
+    recognition — and
+    <span class="hl">your verdict</span>: an instant WOULD BUY / WOULD NOT BUY against the
+    setups you defined yourself — named sets of conditions the AI compiles from a
+    plain-english description of your criteria. HOOPIUM's opinion never overrides yours;
+    you get both, side by side.
+  </p>
 
-    main { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+  <h2>what it does NOT do</h2>
+  <p>
+    <span class="nfa">No financial advice. No price predictions. No trading signals.</span>
+    The gut take at the end of each report is an automated opinion produced by the model,
+    clearly labeled as such. Renounced authorities and clean distributions do not make a
+    token safe, and public data can be wrong, stale or gamed. Nothing in HOOPIUM is a reason
+    to buy a token. Always dyor, ser.
+  </p>
 
-    .page-title {
-      color: var(--amber);
-      font-size: 22px;
-      letter-spacing: 2px;
-      margin-bottom: 28px;
-    }
-
-    .page-title::before { content: "> "; color: var(--green); }
-
-    h2 {
-      color: var(--green);
-      font-size: 16px;
-      letter-spacing: 1px;
-      margin: 34px 0 12px;
-    }
-
-    h2::before { content: "[+] "; color: var(--amber); }
-
-    p { line-height: 1.8; font-size: 15px; margin-bottom: 14px; color: #b8ffb8; }
-    .hl { color: var(--amber); }
-    .nfa { color: var(--red); }
-
-    ol, ul { margin: 6px 0 14px 22px; color: #9adf9a; font-size: 14px; line-height: 2; }
-
-    .backline { margin-top: 40px; }
-  </style>
-</head>
-<body>
-  <nav>
-    <div class="logo">HOOPIUM_</div>
-    <div class="links">
-      <a href="/">terminal</a>
-      <a href="/specs">specs</a>
-      <a href="/whitepaper">whitepaper</a>
-      <a href="https://x.com/HoopiumX" target="_blank" rel="noopener">socials</a>
-    </div>
-  </nav>
-
-  <main>
-    <h1 class="page-title">cat about.txt --full</h1>
-
-    <h2>the mission</h2>
-    <p>
-      <span class="hl">HOOPIUM</span> has one single mission: scanning Solana tokens for rug
-      vibes before you ape. Trained on <span class="hl">thousands of hours of market data</span>
-      from the trenches, it compresses the whole due-diligence loop — authorities, holders,
-      liquidity, volume, bonding curve, narrative — into one action: paste a
-      <span class="hl">contract address (CA)</span>, get a risk report in seconds.
-    </p>
-    <p>
-      Every day thousands of tokens launch. Deployers know everything; buyers get a ticker,
-      a chart and whatever the deployer typed into a description box. The data to level that
-      asymmetry is public, but it's scattered across four different tools — and in the
-      trenches, four tabs is the whole trade. HOOPIUM runs the full checklist for you,
-      automatically, on every scan.
-    </p>
-
-    <h2>how a scan works</h2>
-    <ol>
-      <li>you paste a CA (base58, 32-44 chars) — an @username routes to the account history check instead, anything else gets bounced back</li>
-      <li>HOOPIUM pulls market structure from DexScreener: price, market cap, 24h volume, pair age, and liquidity summed across every pool where the token trades</li>
-      <li>it checks the chain itself: mint &amp; freeze authority status and top-10 holder concentration</li>
-      <li>for pump.fun tokens: bonding curve progress, or whether it already graduated to Raydium — plus the token's own lore/description</li>
-      <li>it cross-references RugCheck's independent risk score and pulls 3-5 similar-named tokens, because most launches are clones and the clones tell you how the story ends</li>
-      <li>it reads the <span class="hl">current market meta</span> from what's live and trending on pump.fun right now, and judges whether this coin's narrative fits it</li>
-      <li>an ML model — trained through countless hours of pattern recognition in the trenches — turns all of that into red flags and a <span class="hl">0-100 HOOPIUM score</span>, your own buy rules get evaluated, and the report is written up in the terminal</li>
-    </ol>
-
-    <h2>x account receipts</h2>
-    <p>
-      Half the rugs in the trenches start with a "dev" account created last week. Drop an
-      <span class="hl">@username</span> in the terminal and HOOPIUM digs through the
-      <span class="hl">Wayback Machine's public archives</span> instead of the chain: the oldest
-      archived snapshot of the profile is the account's <span class="hl">confirmed minimum age</span>,
-      the archived display name and bio show whether it was rebranded, and the tweet count then
-      vs now gets compared — with a <span class="hl">possible mass deletion</span> flag only when
-      the drop is big enough to be real evidence. X blocks direct scraping, so it's best-effort
-      by design: whatever couldn't be verified is listed as NOT CONFIRMED, never guessed.
-      No X API, no paid data.
-    </p>
-
-    <h2>two verdicts, not one</h2>
-    <p>
-      Every scan ends with <span class="hl">HOOPIUM's verdict</span> — the 0-100 score with a
-      LOW / MEDIUM / HIGH risk level, computed by ML and countless hours of pattern
-      recognition — and
-      <span class="hl">your verdict</span>: an instant WOULD BUY / WOULD NOT BUY against the
-      setups you defined yourself — named sets of conditions the AI compiles from a
-      plain-english description of your criteria. HOOPIUM's opinion never overrides yours;
-      you get both, side by side.
-    </p>
-
-    <h2>what it does NOT do</h2>
-    <p>
-      <span class="nfa">No financial advice. No price predictions. No trading signals.</span>
-      The gut take at the end of each report is an automated opinion produced by the model,
-      clearly labeled as such. Renounced authorities and clean distributions do not make a
-      token safe, and public data can be wrong, stale or gamed. Nothing in HOOPIUM is a reason
-      to buy a token. Always dyor, ser.
-    </p>
-
-    <p class="backline">
-      <a href="/">&lt; back to the terminal</a> · <a href="/specs">read the full specs</a> ·
-      <a href="/whitepaper">read the whitepaper</a>
-    </p>
-  </main>
-</body>
-</html>
+  <p class="backline">
+    <a href="/terminal">&lt; back to the terminal</a> · <a href="/specs">read the full specs</a> ·
+    <a href="/whitepaper">read the whitepaper</a>
+  </p>
+</main>
+{% endblock %}

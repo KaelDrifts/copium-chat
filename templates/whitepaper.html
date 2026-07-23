@@ -1,87 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HOOPIUM — whitepaper</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+{% extends "base.html" %}
 
-    :root {
-      --green: #33ff33;
-      --green-dim: #1a9c1a;
-      --amber: #ffbf00;
-      --bg: #000;
-    }
+{% block title %}HOOPIUM — whitepaper{% endblock %}
+{% block description %}The HOOPIUM whitepaper: the thesis behind the scanner, in full.{% endblock %}
 
-    body {
-      background: var(--bg);
-      color: var(--green);
-      font-family: "Courier New", Courier, monospace;
-    }
+{% block head %}
+<style>
+  .doc pre.wp {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #b8ffb8;
+    font-size: 14px;
+    line-height: 1.7;
+    border: 1px solid var(--green-dim);
+    background: var(--panel);
+    padding: 24px;
+  }
+</style>
+{% endblock %}
 
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background: repeating-linear-gradient(
-        0deg,
-        rgba(0, 0, 0, 0.15) 0px,
-        rgba(0, 0, 0, 0.15) 1px,
-        transparent 1px,
-        transparent 3px
-      );
-      z-index: 999;
-    }
-
-    nav {
-      position: sticky;
-      top: 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 24px;
-      background: rgba(0, 0, 0, 0.92);
-      border-bottom: 1px solid var(--green-dim);
-      z-index: 100;
-    }
-
-    nav .logo { font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px var(--green); }
-    nav a { color: var(--green); text-decoration: none; font-size: 14px; }
-    nav a:hover { color: var(--amber); }
-
-    main { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
-
-    .wp-title {
-      color: var(--amber);
-      font-size: 20px;
-      letter-spacing: 2px;
-      margin-bottom: 24px;
-    }
-
-    .wp-title::before { content: "> "; color: var(--green); }
-
-    pre.wp {
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      color: #b8ffb8;
-      font-size: 14px;
-      line-height: 1.7;
-      border: 1px solid var(--green-dim);
-      background: #050a05;
-      padding: 24px;
-    }
-  </style>
-</head>
-<body>
-  <nav>
-    <div class="logo">HOOPIUM_</div>
-    <a href="/">&lt; back to terminal</a>
-  </nav>
-  <main>
-    <h1 class="wp-title">cat WHITEPAPER.md</h1>
-    <pre class="wp">{{ content }}</pre>
-  </main>
-</body>
-</html>
+{% block body %}
+<main class="doc">
+  <h1 class="page-title">cat WHITEPAPER.md</h1>
+  <pre class="wp">{{ content }}</pre>
+  <p class="backline">
+    <a href="/">&lt; back to menu</a> · <a href="/about">about</a> ·
+    <a href="/specs">specs</a>
+  </p>
+</main>
+{% endblock %}

@@ -1419,12 +1419,27 @@ def badge(ca):
 
 @app.route("/about")
 def about():
-    return render_template("about.html")
+    return render_template("about.html", active="about")
 
 
 @app.route("/specs")
 def specs():
-    return render_template("specs.html")
+    return render_template("specs.html", active="specs")
+
+
+@app.route("/terminal")
+def terminal():
+    return render_template("terminal.html", active="terminal")
+
+
+@app.route("/extension")
+def extension():
+    return render_template("extension.html", active="extension")
+
+
+@app.route("/socials")
+def socials():
+    return render_template("socials.html", active="socials")
 
 
 @app.route("/whitepaper")
@@ -1434,7 +1449,7 @@ def whitepaper():
             content = f.read()
     except OSError:
         content = "whitepaper unavailable, ser."
-    return render_template("whitepaper.html", content=content)
+    return render_template("whitepaper.html", content=content, active="whitepaper")
 
 
 # Terminal easter eggs: bare lowercase commands answered without touching any API.

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}HOOPIUM — chrome extension{% endblock %}
+{% block description %}The HOOPIUM Chrome extension: scan a Solana CA in one click from your toolbar, without leaving Axiom, Photon, BullX, DexScreener or pump.fun.{% endblock %}
+
+{% block head %}
+<style>
+  main.ext-page { max-width: 900px; margin: 0 auto; padding: 40px 20px 60px; }
+
+  .ext-hero { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+
+  .ext-copy { flex: 1; min-width: 280px; }
+  .ext-copy p { line-height: 1.8; font-size: 15px; margin-bottom: 14px; color: #b8ffb8; }
+  .ext-copy .hl { color: var(--amber); }
+
+  .ext-download { display: inline-block; margin-bottom: 16px; font-size: 15px; }
+
+  .ext-steps { margin: 6px 0 0 20px; color: #9adf9a; font-size: 14px; line-height: 2; }
+  .ext-steps .hl { color: var(--amber); }
+
+  .ext-mock {
+    border: 1px solid var(--green);
+    box-shadow: 0 0 18px rgba(51, 255, 51, 0.3);
+    background: var(--bg);
+    color: var(--green);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 14px 16px;
+  }
+
+  .backline { margin-top: 40px; }
+</style>
+{% endblock %}
+
+{% block body %}
+<main class="ext-page">
+  <h1 class="section-title">./install --chrome-extension</h1>
+  <div class="ext-hero">
+    <div class="ext-copy">
+      <p>
+        <span class="hl">Don't leave your trading platform to check a token.</span> The HOOPIUM
+        Chrome extension puts the scanner one click away from your toolbar: copy a CA on
+        Axiom, Photon, BullX, DexScreener or pump.fun, open the popup, paste, scan.
+      </p>
+      <p>
+        Even faster: <span class="hl">select the CA on any page → right click →
+        "Scan with HOOPIUM"</span> — the popup opens with the report already loading.
+        Your buy rules work there too, so you get your WOULD BUY / WOULD NOT BUY verdict
+        mid-trade, in seconds.
+      </p>
+      <a class="btn btn-amber ext-download" href="/download/hoopium-extension.zip">&gt; download extension (.zip)</a>
+      <ol class="ext-steps">
+        <li>click the button above and <span class="hl">unzip</span> the download</li>
+        <li>open <span class="hl">chrome://extensions</span> and enable <span class="hl">Developer mode</span></li>
+        <li>click <span class="hl">Load unpacked</span> and pick the unzipped <span class="hl">hoopium-extension</span> folder</li>
+        <li>pin HOOPIUM to your toolbar and start scanning, ser</li>
+      </ol>
+    </div>
+    <pre class="ext-mock" aria-hidden="true">
+┌──────────────────────────────┐
+│ HOOPIUM v2.0 — scanner [●●●] │
+├──────────────────────────────┤
+│ [anon] 8Qbv...KQpump         │
+│ [RULES] ✗ WOULD NOT BUY      │
+│ [HOOPIUM] == RED FLAGS ==    │
+│  - liquidity near zero       │
+│  - top 10 hold 100%          │
+│ [HOOPIUM] 35/100 — RISK:HIGH │
+├──────────────────────────────┤
+│ &gt; paste a solana CA, ser...  │
+└──────────────────────────────┘</pre>
+  </div>
+
+  <p class="backline">
+    <a href="/terminal">&lt; back to the terminal</a> · <a href="/specs">full specs</a> ·
+    <a href="/">back to menu</a>
+  </p>
+</main>
+{% endblock %}

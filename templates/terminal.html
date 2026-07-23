@@ -1,0 +1,993 @@
+{% extends "base.html" %}
+
+{% block title %}HOOPIUM — terminal{% endblock %}
+{% block description %}Boot the HOOPIUM scanner: paste a Solana CA for a full rug-risk report, or an @username for an X account history check.{% endblock %}
+
+{% block head %}
+<style>
+  main.term-page { max-width: 900px; margin: 0 auto; padding: 40px 20px 60px; }
+
+  /* ---------- LIVE META TICKER ---------- */
+  .ticker-wrap {
+    overflow: hidden;
+    border: 1px solid var(--green-dim);
+    background: #020502;
+    margin-bottom: 22px;
+  }
+
+  .ticker {
+    display: inline-flex;
+    white-space: nowrap;
+    padding: 7px 0;
+    animation: ticker-scroll 45s linear infinite;
+  }
+
+  .ticker-wrap:hover .ticker { animation-play-state: paused; }
+
+  @keyframes ticker-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  .ticker .tick-label { color: var(--amber); font-size: 12px; margin: 0 18px 0 24px; letter-spacing: 1px; }
+
+  .tick {
+    background: transparent;
+    border: none;
+    color: var(--green);
+    font-family: inherit;
+    font-size: 12px;
+    margin-right: 28px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .tick:hover { color: var(--amber); text-shadow: 0 0 6px var(--amber); }
+  .tick .sym { color: var(--amber); }
+  .tick:hover .sym { color: var(--green); }
+  .tick .mcap { color: var(--green-dim); }
+
+  .hero-status { color: var(--green-dim); font-size: 13px; margin-bottom: 22px; letter-spacing: 1px; }
+  .hero-status .pulse-dot { color: var(--green); animation: pulse 1.6s ease-in-out infinite; display: inline-block; }
+  .hero-status .stat { color: var(--amber); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; text-shadow: 0 0 8px var(--green); }
+    50% { opacity: 0.35; text-shadow: none; }
+  }
+
+  /* ---------- CHAT TERMINAL ---------- */
+  .terminal {
+    display: flex;
+    flex-direction: column;
+    height: 560px;
+    border: 1px solid var(--green);
+    box-shadow: 0 0 18px rgba(51, 255, 51, 0.3);
+    background: var(--bg);
+  }
+
+  .titlebar {
+    border-bottom: 1px solid var(--green);
+    padding: 8px 12px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 6px var(--green);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .titlebar .dots { color: var(--green-dim); }
+
+  #chat { flex: 1; overflow-y: auto; padding: 12px; font-size: 14px; line-height: 1.5; }
+
+  .msg { margin-bottom: 10px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg .tag { font-weight: bold; }
+  .msg.user { color: var(--green); }
+  .msg.user .tag { color: #00cc00; }
+  .msg.bot { color: var(--amber); }
+  .msg.bot .tag { color: var(--amber-dim); }
+  .msg.error { color: var(--red); }
+  .msg.error .tag { color: #ff0000; }
+
+  .inputbar { display: flex; border-top: 1px solid var(--green); }
+  .inputbar .prompt-char { padding: 10px 0 10px 12px; }
+
+  #input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--green);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 8px;
+    caret-color: var(--green);
+  }
+
+  #send {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--green);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 16px;
+    cursor: pointer;
+  }
+
+  #send:hover { background: var(--green); color: #000; }
+  #send:disabled { opacity: 0.4; cursor: wait; }
+
+  #chat::-webkit-scrollbar { width: 8px; }
+  #chat::-webkit-scrollbar-thumb { background: var(--green-dim); }
+  #chat::-webkit-scrollbar-track { background: #0a0a0a; }
+
+  .msg.verdict-pass { color: var(--green); }
+  .msg.verdict-pass .tag { color: #00cc00; }
+  .msg.verdict-fail { color: var(--red); }
+  .msg.verdict-fail .tag { color: #ff0000; }
+
+  .msg.bootline { color: var(--green-dim); }
+
+  .term-shell.crt-on { animation: crt-on 0.6s ease-out; }
+  @keyframes crt-on {
+    0% { transform: scale(1, 0.008); filter: brightness(6); }
+    35% { transform: scale(1, 0.008); filter: brightness(6); }
+    60% { transform: scale(1.015, 1); filter: brightness(3); }
+    100% { transform: scale(1); filter: brightness(1); }
+  }
+
+  /* ---------- BUY RULES PANEL ---------- */
+  .rules-panel {
+    border: 1px solid var(--green-dim);
+    border-top: none;
+    background: var(--panel);
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .rules-toggle {
+    background: transparent;
+    border: none;
+    color: var(--amber);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .rules-toggle:hover { text-shadow: 0 0 6px var(--amber); }
+  .rules-hint { color: var(--green-dim); font-size: 12px; line-height: 1.5; margin: 10px 0; }
+  .rules-hint .hl { color: var(--amber); }
+  .rule-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: #b8ffb8; font-size: 12px; }
+
+  /* ---------- SETUPS ---------- */
+  .setup-create {
+    background: transparent;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+
+  .setup-create:hover { background: var(--amber); color: #000; }
+
+  .setup-row { padding: 4px 0; font-size: 12px; }
+  .setup-row .setup-head { display: flex; align-items: center; gap: 8px; }
+
+  .setup-row .setup-name {
+    background: transparent;
+    border: none;
+    color: var(--amber);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .setup-row .setup-name:hover { text-shadow: 0 0 6px var(--amber); }
+  .setup-row .setup-meta { color: var(--green-dim); }
+
+  .setup-row .setup-btn {
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .setup-row .setup-edit { color: var(--green); }
+  .setup-row .setup-onoff { color: var(--green); }
+  .setup-row .setup-onoff.off { color: var(--green-dim); }
+  .setup-row .setup-del { color: var(--red); }
+  .setup-row .setup-conds { padding: 4px 0 2px 22px; color: #b8ffb8; }
+  .setup-row .setup-conds div::before { content: "· "; color: var(--green-dim); }
+
+  .setup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.82);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 200; /* above the sticky nav */
+  }
+
+  .setup-overlay[hidden] { display: none; }
+
+  .setup-modal {
+    width: 100%;
+    max-width: 560px;
+    border: 1px solid var(--green);
+    box-shadow: 0 0 18px rgba(51, 255, 51, 0.3);
+    background: var(--bg);
+  }
+
+  .setup-close {
+    background: transparent;
+    border: none;
+    color: var(--red);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .setup-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .setup-label { color: var(--green-dim); font-size: 12px; }
+
+  .setup-body input[type="text"], .setup-body textarea {
+    background: #000;
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+    resize: vertical;
+  }
+
+  .setup-body input[type="text"]:focus, .setup-body textarea:focus { border-color: var(--green); }
+
+  .setup-generate, .setup-actions button {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+
+  .setup-generate:hover, .setup-actions button:hover { background: var(--green); color: #000; }
+  .setup-generate:disabled { opacity: 0.4; cursor: wait; }
+
+  .setup-actions button { border-color: var(--amber); color: var(--amber); }
+  .setup-actions button:hover { background: var(--amber); color: #000; }
+
+  .setup-ai { font-size: 12px; line-height: 1.7; color: var(--green-dim); }
+  .setup-ai .ai-tag { color: var(--amber); }
+  .setup-ai .ai-ok { color: var(--green); }
+
+  .setup-conditions { font-size: 12px; color: #b8ffb8; line-height: 1.7; }
+  .setup-conditions div::before { content: "✓ "; color: var(--green); }
+
+  /* ---------- CHAT EXTRAS: score badge, share row, history ---------- */
+  .score-badge { height: 30px; vertical-align: middle; filter: drop-shadow(0 0 6px rgba(51, 255, 51, 0.25)); }
+
+  .share-row { font-size: 12px; margin: 2px 0 10px; }
+  .share-row a { color: var(--green-dim); text-decoration: none; }
+  .share-row a:hover { color: var(--amber); }
+
+  .hist-item {
+    background: none;
+    border: none;
+    color: var(--amber);
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+  }
+  .hist-item:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block body %}
+<main class="term-page">
+  <div class="ticker-wrap" id="ticker-wrap" hidden>
+    <div class="ticker" id="ticker"></div>
+  </div>
+
+  <h1 class="section-title">./hoopium --interactive</h1>
+  <p class="hero-status" id="hero-status" hidden>
+    <span class="pulse-dot">●</span> scanner online — <span class="stat" id="meta-count"></span> tokens live on the meta radar
+  </p>
+
+  <div id="term-launch" class="term-launch" hidden></div>
+
+  <div id="term-shell" class="term-shell">
+    <div class="terminal">
+      <div class="titlebar">
+        <span>HOOPIUM v2.0 — solana token scanner</span>
+        <span class="dots">[●●●]</span>
+      </div>
+      <div id="chat"></div>
+      <div class="inputbar">
+        <span class="prompt-char">&gt;</span>
+        <input id="input" type="text" autocomplete="off" placeholder="paste a solana token CA or an @username, ser..." />
+        <button id="send">send</button>
+      </div>
+    </div>
+
+    <div class="rules-panel">
+      <button id="rules-toggle" class="rules-toggle">[+] my buy rules<span id="rules-count"></span></button>
+      <div id="rules-body" hidden>
+        <p class="rules-hint">
+          describe your criteria in plain english and the AI compiles them into a
+          <span class="hl">setup</span>: a named set of conditions a coin must comply with
+          to be tradable or get a score. every scan checks your active setups and gives you
+          an instant WOULD BUY / WOULD NOT BUY verdict on top of the HOOPIUM score.
+          saved in this browser, editable anytime.
+        </p>
+        <div id="setups-list"></div>
+        <button id="setup-create-btn" class="setup-create">[+] create your own setup</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="setup-overlay" class="setup-overlay" hidden>
+    <div class="setup-modal">
+      <div class="titlebar">
+        <span id="setup-modal-title">HOOPIUM — setup builder</span>
+        <button id="setup-close" class="setup-close" title="close">[x]</button>
+      </div>
+      <div class="setup-body">
+        <label class="setup-label" for="setup-name">setup name</label>
+        <input id="setup-name" type="text" maxlength="40" autocomplete="off"
+               placeholder="e.g. degen scalp, safe entries, fresh launches..." />
+        <label class="setup-label" for="setup-desc">describe your rules to the AI</label>
+        <textarea id="setup-desc" rows="4" maxlength="600"
+                  placeholder="e.g. I only want coins with at least $50k liquidity, more than 500 holders, top 10 wallets under 25%, mint renounced and a hoopium score above 60..."></textarea>
+        <button id="setup-generate" class="setup-generate">&gt; generate setup</button>
+        <div id="setup-ai" class="setup-ai" hidden></div>
+        <div id="setup-result" hidden>
+          <p class="setup-label">compiled conditions</p>
+          <div id="setup-conditions" class="setup-conditions"></div>
+          <div class="setup-actions">
+            <button id="setup-save">save setup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const chat = document.getElementById("chat");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+
+  function addMessage(role, text) {
+    const div = document.createElement("div");
+    div.className = "msg " + role;
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent =
+      role === "user" ? "[anon] " :
+      role === "error" ? "[ERROR] " :
+      role.startsWith("verdict") ? "[RULES] " : "[HOOPIUM] ";
+    div.appendChild(tag);
+    div.appendChild(document.createTextNode(text));
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function addScoreMessage(data) {
+    if (typeof data.hoopium_score !== "number") return;
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = "[HOOPIUM] ";
+    div.appendChild(tag);
+    const ca = data.permalink && !data.permalink.startsWith("/scan/@")
+      ? data.permalink.replace("/scan/", "")
+      : null;
+    if (ca) {
+      const img = document.createElement("img");
+      img.className = "score-badge";
+      img.src = "/badge/" + ca + ".svg";
+      img.alt = `HOOPIUM score: ${data.hoopium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`;
+      div.appendChild(img);
+    } else {
+      div.appendChild(document.createTextNode(
+        `HOOPIUM score: ${data.hoopium_score}/100 — risk ${(data.risk_level || "?").toLowerCase()}`
+      ));
+    }
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // ---------- local scan history (this browser only) ----------
+  let scanHistory = [];
+  try { scanHistory = JSON.parse(localStorage.getItem("hoopium_history")) || []; } catch (e) {}
+  let histIndex = -1;
+
+  function rememberScan(message) {
+    scanHistory = scanHistory.filter((m) => m !== message);
+    scanHistory.push(message);
+    if (scanHistory.length > 20) scanHistory = scanHistory.slice(-20);
+    localStorage.setItem("hoopium_history", JSON.stringify(scanHistory));
+    histIndex = -1;
+  }
+
+  function showHistory() {
+    if (!scanHistory.length) {
+      addMessage("bot", "no scan history yet, ser. paste a CA or an @username first.");
+      return;
+    }
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = "[HOOPIUM] ";
+    div.appendChild(tag);
+    div.appendChild(document.createTextNode("your recent scans (click to re-run):"));
+    scanHistory.slice().reverse().forEach((m) => {
+      div.appendChild(document.createElement("br"));
+      const b = document.createElement("button");
+      b.className = "hist-item";
+      b.textContent = "↻ " + m;
+      b.addEventListener("click", () => {
+        if (input.disabled) return;
+        input.value = m;
+        sendMessage();
+      });
+      div.appendChild(b);
+    });
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function addShareRow(data) {
+    if (!data.permalink) return;
+    const div = document.createElement("div");
+    div.className = "msg share-row";
+    const text = typeof data.hoopium_score === "number"
+      ? "HOOPIUM scan: " + data.hoopium_score + "/100 — RISK: " + data.risk_level + " · "
+      : "HOOPIUM X account history check · ";
+    const share = document.createElement("a");
+    share.href = "https://twitter.com/intent/tweet?text="
+      + encodeURIComponent(text + location.origin + data.permalink);
+    share.target = "_blank";
+    share.rel = "noopener";
+    share.textContent = "[share on X]";
+    div.appendChild(share);
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const message = input.value.trim();
+    if (!message) return;
+
+    const lower = message.toLowerCase();
+    if (lower === "clear") {
+      input.value = "";
+      chat.innerHTML = "";
+      addMessage("bot", "terminal cleared. the trenches remain, ser.");
+      return;
+    }
+    if (lower === "history") {
+      addMessage("user", message);
+      input.value = "";
+      showHistory();
+      return;
+    }
+
+    addMessage("user", message);
+    rememberScan(message);
+    input.value = "";
+    sendBtn.disabled = true;
+    input.disabled = true;
+
+    const typing = document.createElement("div");
+    typing.className = "msg bot";
+    typing.innerHTML = '<span class="tag">[HOOPIUM] </span>scanning, ser... <span class="boot-cursor">▌</span>';
+    chat.appendChild(typing);
+    chat.scrollTop = chat.scrollHeight;
+    const clearTyping = () => { if (typing.parentNode) typing.remove(); };
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, stream: true }),
+      });
+
+      const ctype = res.headers.get("content-type") || "";
+      if (!ctype.includes("ndjson")) {
+        // plain JSON: request errors, or a server that doesn't stream
+        const data = await res.json();
+        clearTyping();
+        if (!res.ok || data.error) {
+          addMessage("error", data.error || "something broke, ngmi");
+        } else {
+          addMessage("bot", data.reply);
+          addScoreMessage(data);
+          addShareRow(data);
+        }
+        return;
+      }
+
+      // NDJSON stream: {"meta"} first, then {"delta"} chunks typed into one message
+      let meta = null;
+      let botText = null;
+      const handleLine = (line) => {
+        if (!line.trim()) return;
+        let obj;
+        try { obj = JSON.parse(line); } catch (e) { return; }
+        clearTyping();
+        if (obj.meta) {
+          meta = obj.meta;
+        } else if (obj.reply) {
+          addMessage("bot", obj.reply);
+        } else if (obj.error) {
+          addMessage("error", obj.error);
+        } else if (obj.delta) {
+          if (!botText) {
+            const div = document.createElement("div");
+            div.className = "msg bot";
+            const tag = document.createElement("span");
+            tag.className = "tag";
+            tag.textContent = "[HOOPIUM] ";
+            botText = document.createTextNode("");
+            div.appendChild(tag);
+            div.appendChild(botText);
+            chat.appendChild(div);
+          }
+          botText.data += obj.delta;
+          chat.scrollTop = chat.scrollHeight;
+        }
+      };
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          handleLine(buf.slice(0, nl));
+          buf = buf.slice(nl + 1);
+        }
+      }
+      handleLine(buf);
+      if (meta) {
+        addScoreMessage(meta);
+        addShareRow(meta);
+      }
+    } catch (err) {
+      addMessage("error", "couldn't reach the server: " + err.message);
+    } finally {
+      clearTyping();
+      sendBtn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      sendMessage();
+    } else if (e.key === "ArrowUp") {
+      if (!scanHistory.length) return;
+      e.preventDefault();
+      histIndex = histIndex < 0 ? scanHistory.length - 1 : Math.max(0, histIndex - 1);
+      input.value = scanHistory[histIndex];
+    } else if (e.key === "ArrowDown") {
+      if (histIndex < 0) return;
+      e.preventDefault();
+      histIndex += 1;
+      if (histIndex >= scanHistory.length) {
+        histIndex = -1;
+        input.value = "";
+      } else {
+        input.value = scanHistory[histIndex];
+      }
+    }
+  });
+
+  // ---------- my buy rules panel: setups only ----------
+  const rulesToggle = document.getElementById("rules-toggle");
+  const rulesBody = document.getElementById("rules-body");
+  const rulesCount = document.getElementById("rules-count");
+
+  rulesToggle.addEventListener("click", () => {
+    rulesBody.hidden = !rulesBody.hidden;
+    rulesToggle.textContent = (rulesBody.hidden ? "[+]" : "[-]") + " my buy rules";
+    rulesToggle.appendChild(rulesCount);
+    renderSetups();
+  });
+
+  // ---------- setups: describe your rules to the AI, it compiles a setup ----------
+  // NOTE: visual prototype only — the "AI" is a local keyword parser, nothing is
+  // sent anywhere and setups are never evaluated against scans (yet).
+  const setupsList = document.getElementById("setups-list");
+  const setupOverlay = document.getElementById("setup-overlay");
+  const setupModalTitle = document.getElementById("setup-modal-title");
+  const setupName = document.getElementById("setup-name");
+  const setupDesc = document.getElementById("setup-desc");
+  const setupGenerate = document.getElementById("setup-generate");
+  const setupAi = document.getElementById("setup-ai");
+  const setupResult = document.getElementById("setup-result");
+  const setupConditions = document.getElementById("setup-conditions");
+
+  let setups = [];
+  try { setups = JSON.parse(localStorage.getItem("hoopium_setups")) || []; } catch (e) {}
+  let editingSetup = -1;       // index into setups, -1 = creating a new one
+  let draftConditions = [];    // conditions produced by the last generate
+
+  function saveSetups() {
+    localStorage.setItem("hoopium_setups", JSON.stringify(setups));
+    renderSetups();
+  }
+
+  function renderSetups() {
+    const active = setups.filter((s) => s.on).length;
+    rulesCount.textContent = setups.length ? ` (${active} active)` : "";
+    setupsList.innerHTML = "";
+    if (!setups.length) {
+      const p = document.createElement("div");
+      p.className = "rule-row";
+      p.textContent = "no setups yet — create one below, ser";
+      setupsList.appendChild(p);
+      return;
+    }
+    setups.forEach((s, i) => {
+      const row = document.createElement("div");
+      row.className = "setup-row";
+      const head = document.createElement("div");
+      head.className = "setup-head";
+
+      const del = document.createElement("button");
+      del.className = "setup-btn setup-del";
+      del.textContent = "[x]";
+      del.title = "delete setup";
+      del.addEventListener("click", () => { setups.splice(i, 1); saveSetups(); });
+
+      const onoff = document.createElement("button");
+      onoff.className = "setup-btn setup-onoff" + (s.on ? "" : " off");
+      onoff.textContent = s.on ? "[on]" : "[off]";
+      onoff.title = "toggle setup";
+      onoff.addEventListener("click", () => { s.on = !s.on; saveSetups(); });
+
+      const edit = document.createElement("button");
+      edit.className = "setup-btn setup-edit";
+      edit.textContent = "[edit]";
+      edit.title = "edit setup";
+      edit.addEventListener("click", () => openSetupModal(i));
+
+      const name = document.createElement("button");
+      name.className = "setup-name";
+      name.textContent = "⚙ " + s.name;
+      name.title = "show conditions";
+
+      const meta = document.createElement("span");
+      meta.className = "setup-meta";
+      meta.textContent = `— ${s.conditions.length} conditions`;
+
+      head.append(del, onoff, edit, name, meta);
+      row.appendChild(head);
+
+      const conds = document.createElement("div");
+      conds.className = "setup-conds";
+      conds.hidden = true;
+      s.conditions.forEach((c) => {
+        const line = document.createElement("div");
+        line.textContent = c;
+        conds.appendChild(line);
+      });
+      row.appendChild(conds);
+      name.addEventListener("click", () => { conds.hidden = !conds.hidden; });
+
+      setupsList.appendChild(row);
+    });
+  }
+
+  // the "AI": splits the description into clauses, matches known metrics and the
+  // number/direction words in the same clause, falls back to sane defaults
+  function compileSetup(desc) {
+    const conds = [];
+    const seen = new Set();
+    const money = (v) => "$" + Math.round(v).toLocaleString("en-US");
+    const clamp = (v, lo, hi) => (v == null || v < lo || v > hi ? null : v);
+
+    const metrics = [
+      ["top10", /top\s?(?:10|ten)\s*(?:wallets?|holders?)?|whales?/,
+        (v, op) => `top 10 holders ${op("<=")} ${clamp(v, 1, 100) ?? 25}%`],
+      ["liq", /liquidity|\bliq\b/,
+        (v, op) => `liquidity ${op(">=")} ${money(clamp(v, 100, 1e9) ?? 25000)}`],
+      ["mcap", /market\s?cap|mcap/,
+        (v, op) => `market cap ${op(">=")} ${money(clamp(v, 1000, 1e10) ?? 100000)}`],
+      ["vol", /volume/,
+        (v, op) => `24h volume ${op(">=")} ${money(clamp(v, 100, 1e9) ?? 50000)}`],
+      ["holders", /holders?/,
+        (v, op) => `total holders ${op(">=")} ${clamp(v, 1, 1e7) ?? 500}`],
+      ["age", /\bage\b|days? old|fresh|new launch|launched/,
+        (v, op) => `pair age ${op(">=")} ${clamp(v, 0, 365) ?? 2} days`],
+      ["rug", /rugcheck(?:\s*score)?/,
+        (v, op) => `rugcheck score ${op(">=")} ${clamp(v, 1, 100) ?? 70}`],
+      ["bonding", /bonding(?:\s*curve)?/,
+        (v, op) => `bonding curve ${op(">=")} ${clamp(v, 1, 100) ?? 80}%`],
+      ["score", /score/,
+        (v, op) => `hoopium score ${op(">=")} ${clamp(v, 1, 100) ?? 60}`],
+    ];
+
+    // "50,000" -> "50000" first, so thousands separators don't split clauses
+    const cleaned = desc.toLowerCase().replace(/(\d),(\d{3})\b/g, "$1$2");
+    cleaned.split(/[,.;\n]|\band\b|\bwith\b/).forEach((clause) => {
+      let c = clause;
+      const op = (def) => {
+        if (/under|below|less|max|at most|no more|younger/.test(c)) return "<=";
+        if (/over|above|more|min|at least|older|\d\s*\+/.test(c)) return ">=";
+        return def;
+      };
+      for (const [key, re, make] of metrics) {
+        if (seen.has(key) || !re.test(c)) continue;
+        seen.add(key);
+        c = c.replace(re, " ");
+        const n = c.match(/\$?\s*(\d+(?:[.,]\d+)?)\s*([km])?\b/i);
+        let val = null;
+        if (n) {
+          val = parseFloat(n[1].replace(",", "."));
+          if (n[2]) val *= n[2].toLowerCase() === "k" ? 1e3 : 1e6;
+        }
+        conds.push(make(val, op));
+      }
+      if (/mint/.test(c) && !seen.has("mint")) { seen.add("mint"); conds.push("mint authority renounced"); }
+      if (/freeze/.test(c) && !seen.has("freeze")) { seen.add("freeze"); conds.push("freeze authority renounced"); }
+    });
+
+    // never come back empty-handed, ser
+    if (conds.length < 3) {
+      const filler = [
+        "hoopium score >= 60",
+        "liquidity >= $20,000",
+        "top 10 holders <= 30%",
+        "mint authority renounced",
+      ];
+      filler.forEach((f) => {
+        if (conds.length < 4 && !conds.some((c) => c.split(" ")[0] === f.split(" ")[0])) conds.push(f);
+      });
+    }
+    return conds;
+  }
+
+  function openSetupModal(index) {
+    editingSetup = index;
+    const s = index >= 0 ? setups[index] : null;
+    setupModalTitle.textContent = s ? "HOOPIUM — edit setup" : "HOOPIUM — setup builder";
+    setupName.value = s ? s.name : "";
+    setupDesc.value = s ? s.desc : "";
+    setupAi.hidden = true;
+    setupAi.innerHTML = "";
+    draftConditions = s ? s.conditions.slice() : [];
+    setupConditions.innerHTML = "";
+    draftConditions.forEach((c) => {
+      const line = document.createElement("div");
+      line.textContent = c;
+      setupConditions.appendChild(line);
+    });
+    setupResult.hidden = !s;
+    setupOverlay.hidden = false;
+    setupName.focus();
+  }
+
+  function closeSetupModal() { setupOverlay.hidden = true; }
+
+  document.getElementById("setup-create-btn").addEventListener("click", () => openSetupModal(-1));
+  document.getElementById("setup-close").addEventListener("click", closeSetupModal);
+  setupOverlay.addEventListener("click", (e) => { if (e.target === setupOverlay) closeSetupModal(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !setupOverlay.hidden) closeSetupModal();
+  });
+
+  setupGenerate.addEventListener("click", () => {
+    if (!setupName.value.trim()) { setupName.focus(); return; }
+    if (!setupDesc.value.trim()) { setupDesc.focus(); return; }
+    setupGenerate.disabled = true;
+    setupResult.hidden = true;
+    setupAi.hidden = false;
+    setupAi.innerHTML = "";
+
+    const conds = compileSetup(setupDesc.value);
+    const steps = [
+      "parsing description...",
+      "mapping to on-chain metrics...",
+      "resolving thresholds...",
+      `compiling ${conds.length} conditions...`,
+      `setup "${setupName.value.trim()}" ready ✓`,
+    ];
+    let i = 0;
+    (function tick() {
+      const line = document.createElement("div");
+      const tag = document.createElement("span");
+      tag.className = "ai-tag";
+      tag.textContent = "[AI]";
+      const txt = document.createElement("span");
+      if (i === steps.length - 1) txt.className = "ai-ok";
+      txt.textContent = " " + steps[i];
+      line.append(tag, txt);
+      setupAi.appendChild(line);
+      i++;
+      if (i < steps.length) { setTimeout(tick, 420 + Math.random() * 380); return; }
+      draftConditions = conds;
+      setupConditions.innerHTML = "";
+      conds.forEach((c) => {
+        const row = document.createElement("div");
+        row.textContent = c;
+        setupConditions.appendChild(row);
+      });
+      setupResult.hidden = false;
+      setupGenerate.disabled = false;
+    })();
+  });
+
+  document.getElementById("setup-save").addEventListener("click", () => {
+    const name = setupName.value.trim();
+    if (!name) { setupName.focus(); return; }
+    if (!draftConditions.length) { setupGenerate.click(); return; }
+    const s = { name, desc: setupDesc.value.trim(), conditions: draftConditions, on: true };
+    if (editingSetup >= 0) { s.on = setups[editingSetup].on; setups[editingSetup] = s; }
+    else setups.push(s);
+    saveSetups();
+    closeSetupModal();
+  });
+
+  renderSetups();
+
+  // ---------- terminal boot: powers on with a CRT animation ----------
+  const termShell = document.getElementById("term-shell");
+  let termLaunched = false;
+  const WELCOME = "gm ser. paste any solana token CA and I'll check it for rug vibes — " +
+    "or drop an @username and I'll dig up that X account's history. type help for all commands.";
+
+  function openTerminal() {
+    if (termLaunched) return;
+    termLaunched = true;
+
+    if (reducedMotion) {
+      addMessage("bot", WELCOME);
+      input.focus({ preventScroll: true });
+      return;
+    }
+
+    termShell.classList.add("crt-on");
+    input.disabled = true;
+    sendBtn.disabled = true;
+
+    const cmdLine = document.createElement("div");
+    cmdLine.className = "msg bootline";
+    chat.appendChild(cmdLine);
+    const cmd = "$ ./hoopium --interactive";
+    const bootLines = [
+      "[ ok ] tty attached — CRT mode",
+      "[ ok ] rug pattern-recognition models loaded",
+      "[ ok ] dexscreener / rugcheck / pump.fun links up",
+      "[ ok ] meta radar streaming",
+    ];
+    let ci = 0;
+    (function typeChar() {
+      ci++;
+      cmdLine.textContent = cmd.slice(0, ci) + (ci < cmd.length ? "▌" : "");
+      if (ci < cmd.length) { setTimeout(typeChar, 26); return; }
+      let li = 0;
+      (function nextLine() {
+        if (li < bootLines.length) {
+          const div = document.createElement("div");
+          div.className = "msg bootline";
+          div.textContent = bootLines[li++];
+          chat.appendChild(div);
+          chat.scrollTop = chat.scrollHeight;
+          setTimeout(nextLine, 170 + Math.random() * 220);
+          return;
+        }
+        setTimeout(() => {
+          addMessage("bot", WELCOME);
+          input.disabled = false;
+          sendBtn.disabled = false;
+          input.focus({ preventScroll: true });
+        }, 320);
+      })();
+    })();
+  }
+
+  // auto-boot the terminal once the intro overlay is gone (or immediately if already booted)
+  function whenBooted(cb) {
+    if (!document.getElementById("boot")) { cb(); return; }
+    const obs = new MutationObserver(() => {
+      if (!document.getElementById("boot")) { obs.disconnect(); cb(); }
+    });
+    obs.observe(document.body, { childList: true });
+  }
+  whenBooted(openTerminal);
+
+  // ---------- live meta ticker: what's trending on pump.fun right now, click to scan ----------
+  function fmtMcap(v) {
+    if (v == null) return "";
+    if (v >= 1e6) return "$" + (v / 1e6).toFixed(1) + "m";
+    if (v >= 1e3) return "$" + (v / 1e3).toFixed(1) + "k";
+    return "$" + Math.round(v);
+  }
+
+  function scanFromTicker(mint) {
+    openTerminal();
+    input.value = mint;
+    input.focus({ preventScroll: true });
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  (async function loadTicker() {
+    try {
+      const res = await fetch("/api/meta");
+      const data = await res.json();
+      const trending = (data.trending || []).filter((t) => t.mint && t.name);
+      if (!trending.length) return;
+      const ticker = document.getElementById("ticker");
+      const buildRun = () => {
+        const label = document.createElement("span");
+        label.className = "tick-label";
+        label.textContent = "[LIVE META — pump.fun right now, click to scan]";
+        ticker.appendChild(label);
+        trending.forEach((t) => {
+          const b = document.createElement("button");
+          b.className = "tick";
+          b.title = "scan " + t.name;
+          const sym = document.createElement("span");
+          sym.className = "sym";
+          sym.textContent = "$" + (t.symbol || "?").trim();
+          b.appendChild(document.createTextNode("▸ "));
+          b.appendChild(sym);
+          b.appendChild(document.createTextNode(" " + t.name + " "));
+          const mc = document.createElement("span");
+          mc.className = "mcap";
+          mc.textContent = fmtMcap(t.usd_market_cap);
+          b.appendChild(mc);
+          b.addEventListener("click", () => scanFromTicker(t.mint));
+          ticker.appendChild(b);
+        });
+      };
+      buildRun();
+      buildRun(); // duplicated content = seamless infinite loop
+      document.getElementById("ticker-wrap").hidden = false;
+      document.getElementById("meta-count").textContent = trending.length;
+      document.getElementById("hero-status").hidden = false;
+    } catch (e) {
+      // no ticker if the server can't reach pump.fun — the rest of the page works fine
+    }
+  })();
+</script>
+{% endblock %}

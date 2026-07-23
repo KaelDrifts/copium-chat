@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}HOOPIUM — socials{% endblock %}
+{% block description %}Where to find HOOPIUM out in the trenches.{% endblock %}
+
+{% block head %}
+<style>
+  .socials-list { list-style: none; margin: 8px 0 0; }
+
+  .social-item {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding: 14px 12px;
+    border: 1px solid var(--green-dim);
+    background: var(--panel);
+    text-decoration: none;
+    color: var(--green);
+    margin-bottom: 12px;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .social-item:hover {
+    transform: translateY(-3px);
+    border-color: var(--green);
+    box-shadow: 0 0 16px rgba(51, 255, 51, 0.25);
+  }
+
+  .social-item .handle { color: var(--amber); font-size: 16px; min-width: 150px; }
+  .social-item .handle::before { content: "> "; color: var(--green); }
+  .social-item .what { color: #9adf9a; font-size: 13px; line-height: 1.6; }
+</style>
+{% endblock %}
+
+{% block body %}
+<main class="doc">
+  <h1 class="page-title">cat socials.txt</h1>
+  <p>
+    HOOPIUM lives in the trenches. The scanner itself is the main channel — but this is
+    where to follow the lore, the meta calls and the ships.
+  </p>
+
+  <ul class="socials-list">
+    <li>
+      <a class="social-item" href="https://x.com/HoopiumX" target="_blank" rel="noopener">
+        <span class="handle">X / @HoopiumX</span>
+        <span class="what">the official account — updates, meta reads and the occasional gut take</span>
+      </a>
+    </li>
+    <li>
+      <a class="social-item" href="/terminal">
+        <span class="handle">the terminal</span>
+        <span class="what">skip the socials and just scan — paste a CA or an @username, ser</span>
+      </a>
+    </li>
+  </ul>
+
+  <p class="backline">
+    <a href="/">&lt; back to menu</a> · <a href="/about">about</a> ·
+    <a href="/whitepaper">whitepaper</a>
+  </p>
+</main>
+{% endblock %}
