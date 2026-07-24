@@ -192,19 +192,21 @@
 
 {% block scripts %}
 <script>
-  // the logo tilts toward the cursor (3D CRT feel), like the original hero
+  // the logo follows the cursor anywhere on the page (3D CRT tilt toward the mouse)
   (function logoTilt() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const box = document.querySelector(".logo-rect");
     const logo = document.querySelector(".logo-rect pre.ascii");
+    const box = document.querySelector(".logo-rect");
     if (!box || !logo) return;
-    box.addEventListener("mousemove", (e) => {
+    const clamp = (v) => Math.max(-1, Math.min(1, v));
+    window.addEventListener("mousemove", (e) => {
       const r = box.getBoundingClientRect();
-      const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
-      const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
-      logo.style.transform = `perspective(700px) rotateY(${dx * 12}deg) rotateX(${-dy * 10}deg)`;
-    });
-    box.addEventListener("mouseleave", () => { logo.style.transform = ""; });
+      // offset from the logo's center, normalised across the whole viewport
+      const dx = clamp((e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2));
+      const dy = clamp((e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2));
+      logo.style.transform = `perspective(700px) rotateY(${dx * 14}deg) rotateX(${-dy * 12}deg)`;
+    }, { passive: true });
+    document.addEventListener("mouseleave", () => { logo.style.transform = ""; });
   })();
 
   (function () {
