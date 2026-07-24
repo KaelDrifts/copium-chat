@@ -5,24 +5,88 @@
 
 {% block head %}
 <style>
-  html { scroll-behavior: smooth; }
-
+  /* full-bleed hub: a centered logo rectangle with the 6 section tiles reshaped around it */
   .splash {
+    display: grid;
+    grid-template-columns: 1fr;          /* mobile: single-column stack */
+    gap: 1px;                            /* 1px gaps reveal the green-dim behind = shared divider lines */
+    background: var(--green-dim);
     min-height: 100vh;
+  }
+
+  /* ---------- TILES ---------- */
+  .tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+    min-height: 18vh;
+    background: var(--bg);
+    padding: 22px 28px;
+    text-decoration: none;
+    color: var(--green);
+    overflow: hidden;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+
+  .tile:hover,
+  .tile:focus-visible {
+    background: #061106;
+    box-shadow: inset 0 0 0 1px var(--green), inset 0 0 34px rgba(51, 255, 51, 0.28);
+    outline: none;
+  }
+
+  .tile .tile-name {
+    color: var(--amber);
+    font-size: clamp(15px, 1.6vw, 19px);
+    letter-spacing: 1px;
+  }
+
+  .tile .tile-name .key { color: var(--green-dim); }
+  .tile:hover .tile-name,
+  .tile:focus-visible .tile-name { text-shadow: 0 0 9px var(--amber); }
+  .tile:hover .tile-name .key,
+  .tile:focus-visible .tile-name .key { color: var(--green); }
+
+  .tile .tile-desc { color: #9adf9a; font-size: clamp(12px, 1.15vw, 14px); line-height: 1.5; max-width: 34ch; }
+
+  .tile .tile-meta {
+    color: var(--green-dim);
+    font-size: clamp(10px, 0.95vw, 12px);
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+    max-width: 40ch;
+  }
+
+  .tile:hover .tile-meta,
+  .tile:focus-visible .tile-meta { color: #7bd47b; }
+
+  /* ---------- CENTER LOGO RECTANGLE ---------- */
+  .logo-rect {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 14px;
+    background: #030703;
+    padding: 28px 40px;
     text-align: center;
-    padding: 40px 20px;
+    box-shadow: inset 0 0 0 1px var(--green-dim), inset 0 0 70px rgba(51, 255, 51, 0.1);
   }
 
-  .splash pre.ascii {
+  .logo-rect .tagline {
+    font-size: clamp(12px, 1.7vw, 18px);
+    color: var(--amber);
+    max-width: 34ch;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  }
+
+  .logo-rect pre.ascii {
     color: var(--green);
-    text-shadow: 0 0 10px rgba(51, 255, 51, 0.6);
-    font-size: clamp(6px, 1.6vw, 14px);
+    text-shadow: 0 0 12px rgba(51, 255, 51, 0.7);
+    font-size: clamp(5px, 1.35vw, 12px);
     line-height: 1.15;
-    margin-bottom: 20px;
     animation: flicker 4s infinite;
   }
 
@@ -35,194 +99,114 @@
     98% { opacity: 1; }
   }
 
-  .splash .tagline {
-    font-size: clamp(14px, 2.2vw, 20px);
-    color: var(--amber);
-    margin-bottom: 40px;
-  }
+  /* ---------- WIDE: 3 tiles | logo band | 3 tiles, full viewport ---------- */
+  @media (min-width: 821px) {
+    .splash {
+      position: fixed;
+      inset: 0;
+      min-height: 0;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: 1fr auto 1fr;   /* top/bottom tile rows resize around the auto logo row */
+    }
 
-  /* ---------- TERMINAL MENU ---------- */
-  .menu {
-    width: min(560px, 92vw);
-    border: 1px solid var(--green);
-    box-shadow: 0 0 18px rgba(51, 255, 51, 0.3);
-    background: var(--bg);
-    text-align: left;
-  }
+    .tile { min-height: 0; }
 
-  .menu .titlebar {
-    border-bottom: 1px solid var(--green);
-    padding: 8px 12px;
-    font-size: 13px;
-    letter-spacing: 2px;
-    text-shadow: 0 0 6px var(--green);
-    display: flex;
-    justify-content: space-between;
-  }
+    .splash > :nth-child(1) { grid-column: 1; grid-row: 1; align-items: flex-start; justify-content: flex-start; text-align: left; }
+    .splash > :nth-child(2) { grid-column: 2; grid-row: 1; align-items: center;     justify-content: flex-start; text-align: center; }
+    .splash > :nth-child(3) { grid-column: 3; grid-row: 1; align-items: flex-end;   justify-content: flex-start; text-align: right; }
 
-  .menu .titlebar .dots { color: var(--green-dim); }
+    .logo-rect { grid-column: 1 / -1; grid-row: 2; }
 
-  .menu-body { padding: 14px 12px 16px; }
+    .splash > :nth-child(5) { grid-column: 1; grid-row: 3; align-items: flex-start; justify-content: flex-end; text-align: left; }
+    .splash > :nth-child(6) { grid-column: 2; grid-row: 3; align-items: center;     justify-content: flex-end; text-align: center; }
+    .splash > :nth-child(7) { grid-column: 3; grid-row: 3; align-items: flex-end;   justify-content: flex-end; text-align: right; }
 
-  .menu-hint {
-    color: var(--green-dim);
-    font-size: 12px;
-    margin-bottom: 12px;
-    letter-spacing: 1px;
-  }
-
-  .menu-list { list-style: none; }
-
-  .menu-item {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    padding: 7px 10px;
-    color: var(--green);
-    text-decoration: none;
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: background 0.1s, border-color 0.1s;
-  }
-
-  .menu-item .key { color: var(--amber); font-weight: bold; }
-  .menu-item .name { min-width: 96px; }
-  .menu-item .desc { color: var(--green-dim); font-size: 12px; }
-
-  .menu-item:hover,
-  .menu-item.selected {
-    background: rgba(51, 255, 51, 0.08);
-    border-color: var(--green-dim);
-  }
-
-  .menu-item.selected { border-color: var(--green); }
-  .menu-item.selected .name { text-shadow: 0 0 6px var(--green); }
-  .menu-item.selected::before { content: "\25B8"; color: var(--amber); margin-left: -10px; }
-  .menu-item.selected .key-wrap { margin-left: -4px; }
-
-  .menu-prompt {
-    border-top: 1px solid var(--green-dim);
-    margin-top: 12px;
-    padding: 10px 10px 2px;
-    font-size: 14px;
-    color: var(--green);
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
-
-  .menu-prompt .ps1 { color: var(--amber); }
-
-  .menu-foot {
-    color: var(--green-dim);
-    font-size: 11px;
-    margin-top: 14px;
-    letter-spacing: 1px;
-    text-align: center;
+    .tile .tile-desc,
+    .tile .tile-meta { max-width: 30ch; }
   }
 </style>
 {% endblock %}
 
-{# splash is a minimal landing: no top nav, no footer — the menu is the whole page #}
+{# splash is a minimal landing: no top nav, no footer — just the tile grid + center logo rectangle #}
 {% block nav %}{% endblock %}
 {% block footer %}{% endblock %}
 
 {% block body %}
 <main class="splash">
-  <pre class="ascii" aria-hidden="true">
+  <a class="tile" href="/about" data-key="1">
+    <span class="tile-name"><span class="key">[1]</span> about</span>
+    <span class="tile-desc">what hoopium is &amp; how a scan works</span>
+    <span class="tile-meta">the mission · the 7-step scan · x-account receipts · what it will never do</span>
+  </a>
+  <a class="tile" href="/specs" data-key="2">
+    <span class="tile-name"><span class="key">[2]</span> specs</span>
+    <span class="tile-desc">every check, threshold &amp; the score table</span>
+    <span class="tile-meta">on-chain checks · market thresholds · 0-100 score table · rules engine</span>
+  </a>
+  <a class="tile" href="/terminal" data-key="3">
+    <span class="tile-name"><span class="key">[3]</span> terminal</span>
+    <span class="tile-desc">boot the scanner — paste a CA or @username</span>
+    <span class="tile-meta">rug-risk report · buy-rule setups · scan history · live meta ticker</span>
+  </a>
+
+  <div class="logo-rect">
+    <p class="tagline">solana token risk scanner — paste a CA or an @username, get the truth</p>
+    <pre class="ascii" aria-hidden="true">
  ██╗  ██╗ ██████╗  ██████╗ ██████╗ ██╗██╗   ██╗███╗   ███╗
  ██║  ██║██╔═══██╗██╔═══██╗██╔══██╗██║██║   ██║████╗ ████║
  ███████║██║   ██║██║   ██║██████╔╝██║██║   ██║██╔████╔██║
  ██╔══██║██║   ██║██║   ██║██╔═══╝ ██║██║   ██║██║╚██╔╝██║
  ██║  ██║╚██████╔╝╚██████╔╝██║     ██║╚██████╔╝██║ ╚═╝ ██║
  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝     ╚═╝ ╚═════╝ ╚═╝     ╚═╝</pre>
-  <h1 style="position:absolute;left:-9999px;">HOOPIUM</h1>
-  <p class="tagline">solana token risk scanner — paste a CA or an @username, get the truth</p>
-
-  <div class="menu" role="navigation" aria-label="main menu">
-    <div class="titlebar">
-      <span>HOOPIUM v2.0 — main menu</span>
-      <span class="dots">[●●●]</span>
-    </div>
-    <div class="menu-body">
-      <p class="menu-hint">&gt; select a module, ser:</p>
-      <ul class="menu-list" id="menu-list">
-        <li><a class="menu-item" href="/about"      data-key="1" data-name="about"><span class="key-wrap"><span class="key">[1]</span></span> <span class="name">about</span><span class="desc">what hoopium is &amp; how a scan works</span></a></li>
-        <li><a class="menu-item" href="/specs"      data-key="2" data-name="specs"><span class="key-wrap"><span class="key">[2]</span></span> <span class="name">specs</span><span class="desc">every check, threshold &amp; the score table</span></a></li>
-        <li><a class="menu-item" href="/terminal"   data-key="3" data-name="terminal"><span class="key-wrap"><span class="key">[3]</span></span> <span class="name">terminal</span><span class="desc">boot the scanner — paste a CA or @username</span></a></li>
-        <li><a class="menu-item" href="/extension"  data-key="4" data-name="extension"><span class="key-wrap"><span class="key">[4]</span></span> <span class="name">extension</span><span class="desc">the one-click chrome toolbar scanner</span></a></li>
-        <li><a class="menu-item" href="/whitepaper" data-key="5" data-name="whitepaper"><span class="key-wrap"><span class="key">[5]</span></span> <span class="name">whitepaper</span><span class="desc">the thesis, in full</span></a></li>
-        <li><a class="menu-item" href="/socials"    data-key="6" data-name="socials"><span class="key-wrap"><span class="key">[6]</span></span> <span class="name">socials</span><span class="desc">find hoopium out there</span></a></li>
-      </ul>
-      <div class="menu-prompt" aria-hidden="true"><span class="ps1">hoopium@trenches:~$</span> <span id="menu-typed"></span><span class="boot-cursor">█</span></div>
-    </div>
+    <h1 style="position:absolute;left:-9999px;">HOOPIUM</h1>
   </div>
-  <p class="menu-foot">[ type a number · or ↑ ↓ + enter · or start typing a name ]</p>
+
+  <a class="tile" href="/extension" data-key="4">
+    <span class="tile-name"><span class="key">[4]</span> extension</span>
+    <span class="tile-desc">the one-click chrome toolbar scanner</span>
+    <span class="tile-meta">toolbar popup · right-click "scan with hoopium" · one-click .zip install</span>
+  </a>
+  <a class="tile" href="/whitepaper" data-key="5">
+    <span class="tile-name"><span class="key">[5]</span> whitepaper</span>
+    <span class="tile-desc">the thesis, in full</span>
+    <span class="tile-meta">abstract · the problem · the score · architecture &amp; trust model · roadmap</span>
+  </a>
+  <a class="tile" href="/socials" data-key="6">
+    <span class="tile-name"><span class="key">[6]</span> socials</span>
+    <span class="tile-desc">find hoopium out there</span>
+    <span class="tile-meta">@HoopiumX on X · updates, meta reads &amp; the occasional gut take</span>
+  </a>
 </main>
 {% endblock %}
 
 {% block scripts %}
 <script>
   (function () {
-    const items = Array.from(document.querySelectorAll(".menu-item"));
-    const typedEl = document.getElementById("menu-typed");
-    let selected = 0;
-    let typed = "";
+    const tiles = Array.from(document.querySelectorAll(".tile"));
 
-    function render() {
-      items.forEach((el, i) => el.classList.toggle("selected", i === selected));
-      typedEl.textContent = typed;
-      items[selected].scrollIntoView({ block: "nearest" });
-    }
-
-    function go(i) {
-      const el = items[i];
-      if (el) window.location.href = el.getAttribute("href");
-    }
-
-    // typing a name highlights the first item whose name starts with the buffer
-    function matchTyped() {
-      if (!typed) return;
-      const i = items.findIndex((el) => el.dataset.name.startsWith(typed.toLowerCase()));
-      if (i >= 0) selected = i;
-    }
-
-    items.forEach((el, i) => {
-      el.addEventListener("mouseenter", () => { selected = i; render(); });
-    });
-
+    // number keys jump straight to a section; arrows move focus around the hub (3 cols x 2 rows of tiles)
     document.addEventListener("keydown", (e) => {
-      // let the boot overlay swallow the first keypress; it removes itself
-      if (document.getElementById("boot")) return;
+      if (document.getElementById("boot")) return;  // let the boot overlay swallow the first keypress
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      if (e.key === "ArrowDown" || e.key === "Tab" && !e.shiftKey) {
-        e.preventDefault();
-        selected = (selected + 1) % items.length;
-        typed = "";
-        render();
-      } else if (e.key === "ArrowUp" || e.key === "Tab" && e.shiftKey) {
-        e.preventDefault();
-        selected = (selected - 1 + items.length) % items.length;
-        typed = "";
-        render();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        go(selected);
-      } else if (/^[1-9]$/.test(e.key)) {
-        const i = items.findIndex((el) => el.dataset.key === e.key);
-        if (i >= 0) { e.preventDefault(); selected = i; render(); go(i); }
-      } else if (e.key === "Backspace") {
-        e.preventDefault();
-        typed = typed.slice(0, -1);
-        matchTyped();
-        render();
-      } else if (/^[a-zA-Z]$/.test(e.key)) {
-        typed += e.key;
-        matchTyped();
-        render();
+      if (/^[1-6]$/.test(e.key)) {
+        const t = tiles.find((el) => el.dataset.key === e.key);
+        if (t) { e.preventDefault(); window.location.href = t.getAttribute("href"); }
+        return;
       }
-    });
 
-    render();
+      const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+      if (!arrows.includes(e.key)) return;
+      e.preventDefault();
+
+      let i = tiles.indexOf(document.activeElement);
+      if (i < 0) { tiles[0].focus(); return; }
+      let row = Math.floor(i / 3), col = i % 3;
+      if (e.key === "ArrowRight") col = (col + 1) % 3;
+      else if (e.key === "ArrowLeft") col = (col + 2) % 3;
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") row = (row + 1) % 2;
+      tiles[row * 3 + col].focus();
+    });
   })();
 </script>
 {% endblock %}
