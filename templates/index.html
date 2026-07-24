@@ -88,7 +88,12 @@
     font-size: clamp(5px, 1.35vw, 12px);
     line-height: 1.15;
     animation: flicker 4s infinite;
+    transition: transform 0.12s ease-out;   /* eases the cursor tilt below */
+    will-change: transform;
   }
+
+  /* glitch the logo while hovering the rectangle (paired with the JS cursor tilt) */
+  .logo-rect:hover pre.ascii { animation: flicker 4s infinite, glitch 0.4s steps(2) infinite; }
 
   @keyframes flicker {
     0%, 100% { opacity: 1; }
@@ -97,6 +102,12 @@
     94% { opacity: 1; }
     97% { opacity: 0.8; }
     98% { opacity: 1; }
+  }
+
+  @keyframes glitch {
+    0%   { text-shadow: 2px 0 rgba(255, 68, 68, 0.7), -2px 0 rgba(51, 153, 255, 0.7), 0 0 10px rgba(51, 255, 51, 0.6); }
+    50%  { text-shadow: -2px 0 rgba(255, 68, 68, 0.7), 2px 0 rgba(51, 153, 255, 0.7), 0 0 10px rgba(51, 255, 51, 0.6); }
+    100% { text-shadow: 1px 0 rgba(255, 68, 68, 0.7), -1px 0 rgba(51, 153, 255, 0.7), 0 0 10px rgba(51, 255, 51, 0.6); }
   }
 
   /* ---------- WIDE: 3 tiles | logo band | 3 tiles, full viewport ---------- */
@@ -181,6 +192,21 @@
 
 {% block scripts %}
 <script>
+  // the logo tilts toward the cursor (3D CRT feel), like the original hero
+  (function logoTilt() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const box = document.querySelector(".logo-rect");
+    const logo = document.querySelector(".logo-rect pre.ascii");
+    if (!box || !logo) return;
+    box.addEventListener("mousemove", (e) => {
+      const r = box.getBoundingClientRect();
+      const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
+      const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
+      logo.style.transform = `perspective(700px) rotateY(${dx * 12}deg) rotateX(${-dy * 10}deg)`;
+    });
+    box.addEventListener("mouseleave", () => { logo.style.transform = ""; });
+  })();
+
   (function () {
     const tiles = Array.from(document.querySelectorAll(".tile"));
 
